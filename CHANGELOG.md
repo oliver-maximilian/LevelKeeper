@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.2] - 2026-07-11
+
+### Bug Fixes
+
+- Drop fragile shared-directory --env-file multi-instance pattern
+
+- Send error mail and record state for lockfile/unexpected run failures
+
+
 ## [0.1.1] - 2026-07-11
 
 ### Bug Fixes
