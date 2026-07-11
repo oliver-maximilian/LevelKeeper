@@ -22,12 +22,14 @@ format:
 lint:
     .venv/bin/ruff check .
 
-# preview the changelog; push=true tags HEAD and pushes only the tag (release workflow does the rest)
+# preview the changelog; `just changelog true` tags HEAD and pushes only the tag (release workflow does the rest)
 changelog push="false":
-    git cliff --config cliff.toml --bump -o CHANGELOG.md
+    #!/usr/bin/env sh
+    set -eu
+    git-cliff --config cliff.toml --bump -o CHANGELOG.md
     if [ "{{ push }}" = "true" ]; then
-    version=$(git cliff --config cliff.toml --bumped-version)
-    git tag "$version"
-    git push origin "$version"
-    echo "pushed tag $version"
+        version=$(git-cliff --config cliff.toml --bumped-version)
+        git tag "$version"
+        git push origin "$version"
+        echo "pushed tag $version"
     fi
