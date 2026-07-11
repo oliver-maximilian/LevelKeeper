@@ -14,7 +14,7 @@ import imaplib
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,7 @@ class ImapClient:
         self._imap = None
         self._selected = None
 
-    def __enter__(self) -> "ImapClient":
+    def __enter__(self) -> ImapClient:
         self.connect()
         return self
 
@@ -225,15 +225,13 @@ class ImapClient:
                 dt = None
         if dt is None and internaldate_match:
             try:
-                dt = datetime.strptime(
-                    internaldate_match.group(1).decode(), "%d-%b-%Y %H:%M:%S %z"
-                )
+                dt = datetime.strptime(internaldate_match.group(1).decode(), "%d-%b-%Y %H:%M:%S %z")
             except ValueError:
                 dt = None
         if dt is None:
-            dt = datetime.now(timezone.utc)
+            dt = datetime.now(UTC)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
 
         return MessageHeader(folder=folder, uid=uid, size=size, date=dt, message_id=message_id)
 

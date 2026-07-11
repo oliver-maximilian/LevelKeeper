@@ -30,7 +30,7 @@ class MonthStats:
     errors: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "MonthStats":
+    def from_dict(cls, data: dict) -> MonthStats:
         return cls(
             archived_count=data.get("archived_count", 0),
             archived_bytes=data.get("archived_bytes", 0),
@@ -67,7 +67,9 @@ class StateStore:
         tmp_path.write_text(json.dumps(self._data, indent=2, sort_keys=True))
         os.replace(tmp_path, self.path)
 
-    def record_run(self, when: date, archived_count: int, archived_bytes: int, errors: list[str]) -> None:
+    def record_run(
+        self, when: date, archived_count: int, archived_bytes: int, errors: list[str]
+    ) -> None:
         month_key = when.strftime("%Y-%m")
         months = self._data.setdefault("months", {})
         month = MonthStats.from_dict(months.get(month_key, {}))

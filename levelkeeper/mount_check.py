@@ -23,9 +23,7 @@ class MountCheckResult:
 def check_mount(archive_root: str | Path, marker_filename: str) -> MountCheckResult:
     root = Path(archive_root)
     if not root.is_dir():
-        return MountCheckResult(
-            False, f"archive root {root} does not exist or is not a directory"
-        )
+        return MountCheckResult(False, f"archive root {root} does not exist or is not a directory")
     marker = root / marker_filename
     if not marker.is_file():
         return MountCheckResult(

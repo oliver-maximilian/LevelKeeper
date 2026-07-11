@@ -37,7 +37,7 @@ def parse_size(value: str | int | float) -> int:
     if not text:
         raise ConfigError("empty size value")
     number_part = text.rstrip("aAbBiIkKmMgGtT")
-    unit_part = text[len(number_part):].strip().upper() or "B"
+    unit_part = text[len(number_part) :].strip().upper() or "B"
     number_part = number_part.strip()
     if unit_part not in _SIZE_UNITS:
         raise ConfigError(f"unknown size unit in {value!r}")

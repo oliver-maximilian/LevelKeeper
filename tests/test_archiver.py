@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from levelkeeper.archiver import Archiver
 from levelkeeper.config import Config
@@ -9,7 +9,7 @@ from levelkeeper.storage import build_archive_path, write_eml_atomic
 INBOX = FolderInfo(raw_name="INBOX", display_name="INBOX", delimiter="/")
 TRASH = FolderInfo(raw_name="Trash", display_name="Trash", delimiter="/")
 
-BASE_DATE = datetime(2024, 1, 1, tzinfo=timezone.utc)
+BASE_DATE = datetime(2024, 1, 1, tzinfo=UTC)
 
 
 class FakeImapClient:
@@ -30,7 +30,13 @@ class FakeImapClient:
 
     def message_headers(self, folder: FolderInfo) -> list[MessageHeader]:
         return [
-            MessageHeader(folder=folder, uid=m["uid"], size=m["size"], date=m["date"], message_id=m["message_id"])
+            MessageHeader(
+                folder=folder,
+                uid=m["uid"],
+                size=m["size"],
+                date=m["date"],
+                message_id=m["message_id"],
+            )
             for m in self._data[folder]
         ]
 
@@ -125,7 +131,9 @@ def test_cleanup_reaches_target(tmp_path):
     assert notifier.errors == []
     for offset, uid in enumerate(("1", "2", "3")):
         date = BASE_DATE + timedelta(days=offset)
-        path = build_archive_path(cfg.archive_root, "INBOX", date, f"<{uid}@test>", f"body-{uid}".encode())
+        path = build_archive_path(
+            cfg.archive_root, "INBOX", date, f"<{uid}@test>", f"body-{uid}".encode()
+        )
         assert path.exists()
 
 
@@ -166,7 +174,9 @@ def test_archive_conflict_aborts_run_and_leaves_mail_on_server(tmp_path):
     client = FakeImapClient(data)
     cfg = _cfg(tmp_path, quota="1000", trigger="600", target="200")
 
-    conflicting_path = build_archive_path(cfg.archive_root, "INBOX", BASE_DATE, "<1@test>", b"body-1")
+    conflicting_path = build_archive_path(
+        cfg.archive_root, "INBOX", BASE_DATE, "<1@test>", b"body-1"
+    )
     write_eml_atomic(conflicting_path, b"unrelated pre-existing content")
 
     result, notifier = _run(cfg, client)

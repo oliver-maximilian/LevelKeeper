@@ -50,7 +50,9 @@ def main(argv: list[str] | None = None) -> int:
 
     setup_logging(config.log_level, config.log_format)
     logger = logging.getLogger("levelkeeper")
-    logger.info("starting levelkeeper (dry_run=%s, archive_root=%s)", config.dry_run, config.archive_root)
+    logger.info(
+        "starting levelkeeper (dry_run=%s, archive_root=%s)", config.dry_run, config.archive_root
+    )
 
     notifier = Notifier(config)
     state = StateStore(config.state_path)

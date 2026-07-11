@@ -60,7 +60,7 @@ class LockFile:
             self.path.unlink(missing_ok=True)
             self._held = False
 
-    def __enter__(self) -> "LockFile":
+    def __enter__(self) -> LockFile:
         self.acquire()
         return self
 

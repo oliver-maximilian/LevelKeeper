@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import time
-from typing import Callable
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,9 @@ def parse_interval(value: str) -> float | None:
     return float(number) * _UNIT_SECONDS[unit.lower()]
 
 
-def run_forever(run_once: Callable[[], None], interval_seconds: float, should_stop: Callable[[], bool]) -> None:
+def run_forever(
+    run_once: Callable[[], None], interval_seconds: float, should_stop: Callable[[], bool]
+) -> None:
     step = 1.0
     while not should_stop():
         try:

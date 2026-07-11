@@ -46,8 +46,11 @@ def build_filename(message_date: datetime, message_id: str, raw_bytes: bytes) ->
 
 
 def build_archive_path(
-    archive_root: str | Path, folder_display_name: str, message_date: datetime,
-    message_id: str, raw_bytes: bytes,
+    archive_root: str | Path,
+    folder_display_name: str,
+    message_date: datetime,
+    message_id: str,
+    raw_bytes: bytes,
 ) -> Path:
     rel_dir = build_relative_dir(folder_display_name, message_date)
     filename = build_filename(message_date, message_id, raw_bytes)

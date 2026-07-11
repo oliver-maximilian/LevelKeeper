@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from levelkeeper.storage import (
     build_archive_path,
@@ -18,13 +18,13 @@ def test_sanitize_path_segment():
 
 
 def test_build_relative_dir():
-    dt = datetime(2024, 3, 15, tzinfo=timezone.utc)
+    dt = datetime(2024, 3, 15, tzinfo=UTC)
     rel = build_relative_dir("INBOX/Projects", dt)
     assert str(rel) == "2024/INBOX/Projects"
 
 
 def test_build_filename_deterministic():
-    dt = datetime(2024, 3, 15, 10, 30, 0, tzinfo=timezone.utc)
+    dt = datetime(2024, 3, 15, 10, 30, 0, tzinfo=UTC)
     raw = b"Subject: test\r\n\r\nbody"
     name1 = build_filename(dt, "<abc@example.com>", raw)
     name2 = build_filename(dt, "<abc@example.com>", raw)
@@ -34,7 +34,7 @@ def test_build_filename_deterministic():
 
 
 def test_build_filename_fallback_without_message_id():
-    dt = datetime(2024, 3, 15, tzinfo=timezone.utc)
+    dt = datetime(2024, 3, 15, tzinfo=UTC)
     name_a = build_filename(dt, "", b"body a")
     name_b = build_filename(dt, "", b"body b")
     assert name_a != name_b
@@ -74,7 +74,7 @@ def test_find_existing_archive_conflict(tmp_path):
 
 
 def test_build_archive_path_full(tmp_path):
-    dt = datetime(2023, 1, 1, tzinfo=timezone.utc)
+    dt = datetime(2023, 1, 1, tzinfo=UTC)
     path = build_archive_path(tmp_path, "INBOX", dt, "<id@example.com>", b"body")
     assert path.parent == tmp_path / "2023" / "INBOX"
     assert path.suffix == ".eml"

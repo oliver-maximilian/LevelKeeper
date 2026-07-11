@@ -19,7 +19,9 @@ def format_bytes(n: int) -> str:
     return f"{value:.2f} {_UNITS[-1]}"
 
 
-def monthly_report_body(month_key: str, stats: MonthStats, fill_bytes: int, quota_bytes: int) -> str:
+def monthly_report_body(
+    month_key: str, stats: MonthStats, fill_bytes: int, quota_bytes: int
+) -> str:
     pct = (fill_bytes / quota_bytes * 100) if quota_bytes else 0.0
     lines = [
         f"LevelKeeper Monatsbericht fuer {month_key}",
@@ -27,7 +29,8 @@ def monthly_report_body(month_key: str, stats: MonthStats, fill_bytes: int, quot
         f"Archivierte Mails:        {stats.archived_count}",
         f"Freigegebener Speicher:   {format_bytes(stats.archived_bytes)}",
         "",
-        f"Aktueller Fuellstand:     {format_bytes(fill_bytes)} von {format_bytes(quota_bytes)} ({pct:.1f}%)",
+        f"Aktueller Fuellstand:     {format_bytes(fill_bytes)} von "
+        f"{format_bytes(quota_bytes)} ({pct:.1f}%)",
     ]
     if stats.errors:
         lines.append("")

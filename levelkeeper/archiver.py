@@ -10,9 +10,9 @@ remaining) messages untouched on the server.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
-from typing import Callable
+from datetime import UTC, date, datetime
 
 from levelkeeper.config import Config
 from levelkeeper.imap_client import FolderInfo, ImapClient, ImapError, MessageHeader
@@ -79,11 +79,14 @@ class Archiver:
 
     def _default_imap_client(self) -> ImapClient:
         return ImapClient(
-            self.config.imap_host, self.config.imap_port, self.config.imap_user, self.config.imap_password
+            self.config.imap_host,
+            self.config.imap_port,
+            self.config.imap_user,
+            self.config.imap_password,
         )
 
     def run(self) -> RunResult:
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
         result = RunResult(started_at=started_at, dry_run=self.config.dry_run)
         today = started_at.date()
         self._pending_errors = []
@@ -91,7 +94,7 @@ class Archiver:
         mount_result = check_mount(self.config.archive_root, self.config.mount_marker)
         if not mount_result.ok:
             self._handle_critical(result, "NAS-Mount fehlt", mount_result.reason)
-            result.finished_at = datetime.now(timezone.utc)
+            result.finished_at = datetime.now(UTC)
             self._record_and_maybe_report(result, today)
             return result
 
@@ -101,7 +104,7 @@ class Archiver:
         except LockHeldError as exc:
             logger.info("skipping run: %s", exc)
             result.skipped = True
-            result.finished_at = datetime.now(timezone.utc)
+            result.finished_at = datetime.now(UTC)
             return result
 
         try:
@@ -124,7 +127,7 @@ class Archiver:
                 pass
         finally:
             client.close()
-            result.finished_at = datetime.now(timezone.utc)
+            result.finished_at = datetime.now(UTC)
             self._record_and_maybe_report(result, today)
 
     def _process(self, client: ImapClient, result: RunResult) -> None:
@@ -153,7 +156,10 @@ class Archiver:
         pct = (fill_bytes / quota * 100) if quota else 0.0
 
         logger.info(
-            "current fill level: %s / %s (%.1f%%)", format_bytes(fill_bytes), format_bytes(quota), pct
+            "current fill level: %s / %s (%.1f%%)",
+            format_bytes(fill_bytes),
+            format_bytes(quota),
+            pct,
         )
 
         if fill_bytes < trigger:
@@ -163,7 +169,9 @@ class Archiver:
         result.action_taken = True
         logger.warning(
             "trigger threshold exceeded (%s >= %s), archiving oldest mail toward target %s",
-            format_bytes(fill_bytes), format_bytes(trigger), format_bytes(target),
+            format_bytes(fill_bytes),
+            format_bytes(trigger),
+            format_bytes(target),
         )
 
         exclude = set(self.config.exclude_folders)
@@ -177,7 +185,9 @@ class Archiver:
                 logger.warning(
                     "large message folder=%s uid=%s size=%s exceeds max_message_size (%s); "
                     "archiving individually",
-                    header.folder.display_name, header.uid, format_bytes(header.size),
+                    header.folder.display_name,
+                    header.uid,
+                    format_bytes(header.size),
                     format_bytes(self.config.max_message_size_bytes),
                 )
             fill_bytes -= self._process_message(client, header, result)
@@ -196,7 +206,10 @@ class Archiver:
         if self.config.dry_run:
             logger.info(
                 "[DRY-RUN] wuerde archivieren+loeschen: folder=%s uid=%s date=%s size=%s",
-                header.folder.display_name, header.uid, header.date.isoformat(), format_bytes(header.size),
+                header.folder.display_name,
+                header.uid,
+                header.date.isoformat(),
+                format_bytes(header.size),
             )
             result.archived_count += 1
             result.archived_bytes += header.size
@@ -206,13 +219,19 @@ class Archiver:
             raw = client.fetch_full_message(header.folder, header.uid)
         except ImapError as exc:
             self._handle_critical(
-                result, "Nachricht konnte nicht abgerufen werden", str(exc),
+                result,
+                "Nachricht konnte nicht abgerufen werden",
+                str(exc),
                 context={"folder": header.folder.display_name, "uid": header.uid},
             )
             raise AbortRun from exc
 
         path = build_archive_path(
-            self.config.archive_root, header.folder.display_name, header.date, header.message_id, raw
+            self.config.archive_root,
+            header.folder.display_name,
+            header.date,
+            header.message_id,
+            raw,
         )
         context = {"folder": header.folder.display_name, "uid": header.uid, "path": str(path)}
 
@@ -220,7 +239,10 @@ class Archiver:
             existing = find_existing_archive(path, raw)
             if existing is not None and not existing.ok:
                 self._handle_critical(
-                    result, "Verifikation fehlgeschlagen (Konflikt im Archiv)", existing.reason, context
+                    result,
+                    "Verifikation fehlgeschlagen (Konflikt im Archiv)",
+                    existing.reason,
+                    context,
                 )
                 raise AbortRun
 
@@ -228,25 +250,33 @@ class Archiver:
                 write_eml_atomic(path, raw)
                 verify = verify_written(path, raw)
                 if not verify.ok:
-                    self._handle_critical(result, "Verifikation fehlgeschlagen", verify.reason, context)
+                    self._handle_critical(
+                        result, "Verifikation fehlgeschlagen", verify.reason, context
+                    )
                     raise AbortRun
         except OSError as exc:
             self._handle_critical(result, "Schreiben ins Archiv fehlgeschlagen", str(exc), context)
             raise AbortRun from exc
 
         if existing is None:
-            logger.info("archived folder=%s uid=%s -> %s", header.folder.display_name, header.uid, path)
+            logger.info(
+                "archived folder=%s uid=%s -> %s", header.folder.display_name, header.uid, path
+            )
         else:
             logger.info(
-                "already archived from a previous, interrupted run (idempotent) folder=%s uid=%s -> %s; "
-                "deleting from server now",
-                header.folder.display_name, header.uid, path,
+                "already archived from a previous, interrupted run (idempotent) "
+                "folder=%s uid=%s -> %s; deleting from server now",
+                header.folder.display_name,
+                header.uid,
+                path,
             )
 
         try:
             client.delete_message(header.folder, header.uid)
         except ImapError as exc:
-            self._handle_critical(result, "Loeschen auf dem Server fehlgeschlagen", str(exc), context)
+            self._handle_critical(
+                result, "Loeschen auf dem Server fehlgeschlagen", str(exc), context
+            )
             raise AbortRun from exc
 
         result.archived_count += 1
@@ -271,7 +301,9 @@ class Archiver:
         if pending is not None:
             month_key, stats = pending
             if stats is not None and stats.had_activity():
-                body = monthly_report_body(month_key, stats, result.fill_after, self.config.quota_bytes)
+                body = monthly_report_body(
+                    month_key, stats, result.fill_after, self.config.quota_bytes
+                )
                 self.notifier.send_report(f"Monatsbericht {month_key}", body)
             self.state.mark_reported(month_key)
 
