@@ -115,10 +115,16 @@ class Archiver:
             self._handle_critical(result, "Unerwarteter Fehler", f"{type(exc).__name__}: {exc}")
             return result
         finally:
-            lock.release()
+            try:
+                lock.release()
+            except OSError:
+                logger.exception("failed to release lockfile")
             result.finished_at = datetime.now(UTC)
             if not result.skipped:
-                self._record_and_maybe_report(result, today)
+                try:
+                    self._record_and_maybe_report(result, today)
+                except Exception:  # noqa: BLE001 - must never crash the scheduler loop
+                    logger.exception("failed to persist run state or send monthly report")
 
     def _run_locked(self, result: RunResult) -> None:
         client = self._imap_client_factory()

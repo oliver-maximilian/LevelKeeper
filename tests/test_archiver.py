@@ -208,6 +208,31 @@ def test_lock_permission_error_sends_error_mail_and_does_not_raise(tmp_path):
     assert any("Lockfile" in subject for subject, _ in notifier.errors)
 
 
+def test_entire_data_dir_unwritable_still_completes_without_raising(tmp_path):
+    # Reproduces a host bind-mount owned by the wrong user: both the lockfile
+    # and the state file live under the same unwritable /data directory. The
+    # already-sent error mail (for the lockfile) must not be undone by a
+    # crash while trying to persist run state afterwards.
+    data = {INBOX: [_msg("1", 300, 0)]}
+    client = FakeImapClient(data)
+    cfg = _cfg(tmp_path, quota="1000", trigger="600", target="400")
+
+    unwritable_dir = tmp_path / "no-write"
+    unwritable_dir.mkdir()
+    cfg.lock_file = str(unwritable_dir / "levelkeeper.lock")
+    cfg.state_path = str(unwritable_dir / "state.json")
+    unwritable_dir.chmod(0o555)
+
+    try:
+        result, notifier = _run(cfg, client)
+    finally:
+        unwritable_dir.chmod(0o755)
+
+    assert result.aborted
+    assert result.finished_at is not None
+    assert any("Lockfile" in subject for subject, _ in notifier.errors)
+
+
 class BrokenImapClient(FakeImapClient):
     def list_folders(self) -> list[FolderInfo]:
         raise RuntimeError("boom - unexpected, not an ImapError")
