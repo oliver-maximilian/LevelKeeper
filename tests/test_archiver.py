@@ -187,6 +187,42 @@ def test_archive_conflict_aborts_run_and_leaves_mail_on_server(tmp_path):
     assert any("Konflikt" in subject for subject, _ in notifier.errors)
 
 
+def test_lock_permission_error_sends_error_mail_and_does_not_raise(tmp_path):
+    data = {INBOX: [_msg("1", 300, 0)]}
+    client = FakeImapClient(data)
+    cfg = _cfg(tmp_path, quota="1000", trigger="600", target="400")
+
+    unwritable_dir = tmp_path / "no-write"
+    unwritable_dir.mkdir()
+    unwritable_dir.chmod(0o555)
+    cfg.lock_file = str(unwritable_dir / "levelkeeper.lock")
+
+    try:
+        result, notifier = _run(cfg, client)
+    finally:
+        unwritable_dir.chmod(0o755)
+
+    assert result.aborted
+    assert not result.skipped
+    assert client.deleted == []
+    assert any("Lockfile" in subject for subject, _ in notifier.errors)
+
+
+class BrokenImapClient(FakeImapClient):
+    def list_folders(self) -> list[FolderInfo]:
+        raise RuntimeError("boom - unexpected, not an ImapError")
+
+
+def test_unexpected_exception_sends_error_mail_and_does_not_raise(tmp_path):
+    client = BrokenImapClient({})
+    cfg = _cfg(tmp_path, quota="1000", trigger="600", target="400")
+
+    result, notifier = _run(cfg, client)
+
+    assert result.aborted
+    assert any("Unerwarteter Fehler" in subject for subject, _ in notifier.errors)
+
+
 def test_idempotent_restart_skips_rewrite_but_still_deletes(tmp_path):
     data = {INBOX: [_msg("1", 300, 0), _msg("2", 300, 1), _msg("3", 300, 2)]}
     client = FakeImapClient(data)

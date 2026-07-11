@@ -90,30 +90,37 @@ class Archiver:
         result = RunResult(started_at=started_at, dry_run=self.config.dry_run)
         today = started_at.date()
         self._pending_errors = []
-
-        mount_result = check_mount(self.config.archive_root, self.config.mount_marker)
-        if not mount_result.ok:
-            self._handle_critical(result, "NAS-Mount fehlt", mount_result.reason)
-            result.finished_at = datetime.now(UTC)
-            self._record_and_maybe_report(result, today)
-            return result
+        lock = LockFile(self.config.lock_file)
 
         try:
-            lock = LockFile(self.config.lock_file)
-            lock.acquire()
-        except LockHeldError as exc:
-            logger.info("skipping run: %s", exc)
-            result.skipped = True
-            result.finished_at = datetime.now(UTC)
-            return result
+            mount_result = check_mount(self.config.archive_root, self.config.mount_marker)
+            if not mount_result.ok:
+                self._handle_critical(result, "NAS-Mount fehlt", mount_result.reason)
+                return result
 
-        try:
-            self._run_locked(result, today)
+            try:
+                lock.acquire()
+            except LockHeldError as exc:
+                logger.info("skipping run: %s", exc)
+                result.skipped = True
+                return result
+            except OSError as exc:
+                self._handle_critical(result, "Lockfile konnte nicht angelegt werden", str(exc))
+                return result
+
+            self._run_locked(result)
+            return result
+        except Exception as exc:  # noqa: BLE001 - any unhandled failure must still send an error mail
+            logger.exception("unexpected error during run")
+            self._handle_critical(result, "Unerwarteter Fehler", f"{type(exc).__name__}: {exc}")
+            return result
         finally:
             lock.release()
-        return result
+            result.finished_at = datetime.now(UTC)
+            if not result.skipped:
+                self._record_and_maybe_report(result, today)
 
-    def _run_locked(self, result: RunResult, today: date) -> None:
+    def _run_locked(self, result: RunResult) -> None:
         client = self._imap_client_factory()
         try:
             try:
@@ -127,8 +134,6 @@ class Archiver:
                 pass
         finally:
             client.close()
-            result.finished_at = datetime.now(UTC)
-            self._record_and_maybe_report(result, today)
 
     def _process(self, client: ImapClient, result: RunResult) -> None:
         try:
