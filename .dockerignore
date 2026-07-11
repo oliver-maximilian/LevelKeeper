@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.env.*
+data/
+config/config.toml
+tests/
+*.md
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/

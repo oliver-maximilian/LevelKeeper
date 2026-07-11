@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "levelkeeper"
+version = "0.1.0"
+description = "IMAP mailbox fill-level manager: archives the oldest mail to a NAS and deletes it from the server once a configurable threshold is exceeded."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["levelkeeper"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

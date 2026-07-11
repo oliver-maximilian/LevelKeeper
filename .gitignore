@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+
+config/config.toml
+data/*
+!data/.gitkeep
+
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
