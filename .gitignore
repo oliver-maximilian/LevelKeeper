@@ -11,3 +11,7 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .venv/
+.ruff_cache/
+
+# Changelog lives only in GitHub Releases, not as a repo file - see justfile.
+CHANGELOG.md

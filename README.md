@@ -29,7 +29,7 @@ vollständige Anleitung.
   Dry-Run, Betrieb, mehrere Postfächer
 - [docs/operations.md](docs/operations.md) - Benachrichtigungen,
   Betriebssicherheit
-- [CHANGELOG.md](CHANGELOG.md) - Änderungen je Release
+- [GitHub Releases](https://github.com/oliver-maximilian/LevelKeeper/releases) - Änderungen je Version (per `git-cliff` generiert, siehe `just changelog`)
 
 ## Nicht-Ziele
 
