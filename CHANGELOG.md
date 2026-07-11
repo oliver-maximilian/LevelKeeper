@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.1] - 2026-07-11
+
+### Bug Fixes
+
+- Rebuild image in just run so local code changes aren't run stale
+
+
+### CI
+
+- Build and push docker image to ghcr.io on tag push
+
+
 ## [0.1.0] - 2026-07-11
 
 ### Bug Fixes
