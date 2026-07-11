@@ -8,7 +8,7 @@ init:
 
 # start levelkeeper via docker compose (internal scheduler)
 run:
-    docker compose up -d
+    docker compose up -d --build
 
 # run the test suite
 test:
