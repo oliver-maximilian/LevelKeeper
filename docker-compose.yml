@@ -1,0 +1,29 @@
+# Single mailbox per deployment. For a second mailbox, run this same file
+# again with a different project name and .env file, e.g.:
+#
+#   docker compose -p levelkeeper-oliver  --env-file .env.oliver  up -d
+#   docker compose -p levelkeeper-familie --env-file .env.familie up -d
+#
+# each pointing NAS_ARCHIVE_PATH/DATA_PATH/CONFIG_PATH at instance-specific
+# host directories. See README.md.
+
+services:
+  levelkeeper:
+    build: .
+    image: levelkeeper:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Config file (optional if everything is supplied via .env).
+      - ${CONFIG_PATH:-./config/config.toml}:/config/config.toml:ro
+      # Persistent state (monthly stats, lockfile). Must survive restarts.
+      - ${DATA_PATH:-./data}:/data
+      # NAS share, already mounted on the HOST via fstab/systemd-mount
+      # (SMB or NFS). LevelKeeper only ever writes/reads inside this path -
+      # it never mounts or unmounts anything itself.
+      - ${NAS_ARCHIVE_PATH:?set NAS_ARCHIVE_PATH to the host mount of your NAS share}:/archive
+    # No internal scheduler? Drive it from host cron instead:
+    #   docker compose run --rm levelkeeper --once
+    # and leave RUN_INTERVAL empty in .env so the container just runs once
+    # and exits when started normally too.

@@ -1,0 +1,42 @@
+# Copy to config.toml (or set the equivalent LEVELKEEPER_* env vars instead -
+# env vars always take precedence over this file). Keep credentials out of
+# this file if it will be committed anywhere; prefer .env for those.
+
+[imap]
+host = "imap.strato.de"
+port = 993
+user = "user@example.com"
+password = "changeme"
+
+[smtp]
+host = "smtp.strato.de"
+port = 465
+user = "user@example.com"
+password = "changeme"
+from_addr = "user@example.com"
+
+[quota]
+# Absolute sizes ("1.5GB") or percentages ("80%", relative to quota) are
+# both accepted for trigger/target. target must be lower than trigger.
+quota = "2GB"
+trigger = "80%"
+target = "70%"
+
+[archive]
+root = "/archive"
+exclude_folders = ["Trash", "Junk", "Drafts"]
+max_message_size = "25MB"
+mount_marker = ".levelkeeper_mounted"
+
+[notify]
+report_recipients = ["user@example.com"]
+error_recipients = ["user@example.com"]
+
+[runtime]
+log_level = "INFO"
+log_format = "text"
+dry_run = true
+# Empty string = run once and exit (use host cron + `docker compose run` instead).
+run_interval = "1h"
+state_path = "/data/state.json"
+lock_file = "/data/levelkeeper.lock"
