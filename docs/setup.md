@@ -83,12 +83,27 @@ Zwei gleichwertige Optionen (siehe `docker-compose.yml`):
 
 ## Mehrere Postfächer
 
-Ein Deployment = ein Postfach. Für ein zweites Postfach dasselbe
-`docker-compose.yml` mit eigenem Projektnamen und eigener `.env`
-erneut starten, jeweils mit eigenem
-`NAS_ARCHIVE_PATH`/`DATA_PATH`/`CONFIG_PATH`:
+Ein Deployment = ein Postfach. Für ein zweites Postfach das komplette
+Projektverzeichnis kopieren (oder zumindest `docker-compose.yml` +
+`.env` in ein eigenes Verzeichnis legen) und dort ganz normal starten:
 
 ```
-docker compose -p levelkeeper-oliver  --env-file .env.oliver  up -d
-docker compose -p levelkeeper-familie --env-file .env.familie up -d
+cp -r levelkeeper levelkeeper-familie
+cd levelkeeper-familie
+cp .env.example .env   # eigene Zugangsdaten, eigener NAS_ARCHIVE_PATH/DATA_PATH
+docker compose up -d
 ```
+
+Jedes Verzeichnis hat seine eigene, default-benannte `.env` - es muss
+nie ein `--env-file`-Flag angegeben werden.
+
+**Nicht** versuchen, ein Verzeichnis mit mehreren `.env.<name>`-Dateien
+für mehrere Postfächer zu teilen und per `docker compose --env-file
+.env.<name> up -d` umzuschalten. Das Flag `--env-file` füllt nur die
+`${...}`-Platzhalter in `docker-compose.yml` (z. B.
+`NAS_ARCHIVE_PATH`) - welche Datei der Service per `env_file:` in den
+Container lädt, bleibt davon unberührt und fest auf `.env` kodiert.
+Im besten Fall bricht `docker compose up -d` dann mit einer kryptischen
+Fehlermeldung wie `required variable NAS_ARCHIVE_PATH is missing a
+value` ab; im schlechtesten Fall werden stillschweigend die falschen
+Zugangsdaten geladen.

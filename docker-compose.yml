@@ -1,11 +1,15 @@
-# Single mailbox per deployment. For a second mailbox, run this same file
-# again with a different project name and .env file, e.g.:
+# Single mailbox per deployment. For a second mailbox, copy this whole
+# project directory (or at least this file + .env) into its own directory
+# and run `docker compose up -d` there - each directory gets its own plain
+# `.env`, so nothing needs to be passed on the command line.
 #
-#   docker compose -p levelkeeper-oliver  --env-file .env.oliver  up -d
-#   docker compose -p levelkeeper-familie --env-file .env.familie up -d
-#
-# each pointing NAS_ARCHIVE_PATH/DATA_PATH/CONFIG_PATH at instance-specific
-# host directories. See README.md.
+# Do NOT try to reuse one directory for multiple mailboxes via
+# `--env-file .env.<name>`: that flag only feeds ${...} substitutions in
+# this file (like NAS_ARCHIVE_PATH below); it does NOT change which file
+# the `env_file:` key below loads into the container, which stays hardcoded
+# to plain `.env`. Mixing the two silently loads the wrong credentials (or
+# fails with a cryptic "variable is missing a value" error). See
+# docs/setup.md "Mehrere Postfächer".
 
 services:
   levelkeeper:
