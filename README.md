@@ -32,6 +32,7 @@ Check the dry run and set up the NAS mount before the first real run. Details in
 ```
 just init
 just test
+just test-integration   # real Dovecot in docker
 ```
 
 More commands in the [justfile](justfile) (`run`, `format`, `lint`, `changelog`). No runtime dependencies: standard library only (`imaplib`, `email`, `smtplib`, `tomllib`), Python 3.11+.

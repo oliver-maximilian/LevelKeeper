@@ -1,0 +1,9 @@
+services:
+  dovecot:
+    image: dovecot/dovecot:2.4.1
+    environment:
+      USER_PASSWORD: pass
+    ports:
+      - "14300:31143"
+    volumes:
+      - ./dovecot-test.conf:/etc/dovecot/conf.d/test.conf:ro

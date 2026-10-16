@@ -15,3 +15,17 @@ jobs:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: pytest
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - run: docker compose -f tests/integration/docker-compose.yml up -d
+      - run: timeout 60 sh -c 'until nc -z 127.0.0.1 14300; do sleep 1; done'
+      - run: pytest tests/integration
+      - if: failure()
+        run: docker compose -f tests/integration/docker-compose.yml logs

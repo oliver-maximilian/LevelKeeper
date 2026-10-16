@@ -14,6 +14,15 @@ run:
 test:
     .venv/bin/pytest
 
+# integration tests against a real Dovecot in docker
+test-integration:
+    #!/usr/bin/env sh
+    set -eu
+    docker compose -f tests/integration/docker-compose.yml up -d
+    trap 'docker compose -f tests/integration/docker-compose.yml down' EXIT
+    until nc -z 127.0.0.1 14300; do sleep 1; done
+    .venv/bin/pytest tests/integration
+
 # format
 format:
     .venv/bin/ruff format .
