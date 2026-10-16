@@ -34,7 +34,6 @@ bump-version push="":
         git push origin $VERSION
     fi
 
-# changelog since the last tag
-[no-cd]
+# print the upcoming changelog (stdout only)
 changelog:
-    git cliff --latest > CHANGELOG.md
+    git cliff --unreleased --bump
