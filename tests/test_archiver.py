@@ -155,7 +155,7 @@ def test_excluded_folder_counts_toward_fill_but_is_never_touched(tmp_path):
     assert result.archived_count == 1
     # Target of 400 can't be reached because the 500-byte Trash message is excluded.
     assert result.fill_after == 500
-    assert any("Zielwert nicht erreichbar" in subject for subject, _ in notifier.errors)
+    assert any("Target unreachable" in subject for subject, _ in notifier.errors)
 
 
 def test_dry_run_writes_and_deletes_nothing(tmp_path):
@@ -187,7 +187,7 @@ def test_archive_conflict_aborts_run_and_leaves_mail_on_server(tmp_path):
     assert result.aborted
     assert client.deleted == []
     assert client.fetch_calls == [("INBOX", "1")]
-    assert any("Konflikt" in subject for subject, _ in notifier.errors)
+    assert any("conflict" in subject for subject, _ in notifier.errors)
 
 
 def test_lock_permission_error_sends_error_mail_and_does_not_raise(tmp_path):
@@ -208,7 +208,7 @@ def test_lock_permission_error_sends_error_mail_and_does_not_raise(tmp_path):
     assert result.aborted
     assert not result.skipped
     assert client.deleted == []
-    assert any("Lockfile" in subject for subject, _ in notifier.errors)
+    assert any("lockfile" in subject for subject, _ in notifier.errors)
 
 
 def test_entire_data_dir_unwritable_still_completes_without_raising(tmp_path):
@@ -233,7 +233,7 @@ def test_entire_data_dir_unwritable_still_completes_without_raising(tmp_path):
 
     assert result.aborted
     assert result.finished_at is not None
-    assert any("Lockfile" in subject for subject, _ in notifier.errors)
+    assert any("lockfile" in subject for subject, _ in notifier.errors)
 
 
 class BrokenImapClient(FakeImapClient):
@@ -248,7 +248,7 @@ def test_unexpected_exception_sends_error_mail_and_does_not_raise(tmp_path):
     result, notifier = _run(cfg, client)
 
     assert result.aborted
-    assert any("Unerwarteter Fehler" in subject for subject, _ in notifier.errors)
+    assert any("Unexpected error" in subject for subject, _ in notifier.errors)
 
 
 def test_idempotent_restart_skips_rewrite_but_still_deletes(tmp_path):

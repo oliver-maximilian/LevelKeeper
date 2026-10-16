@@ -24,24 +24,24 @@ def monthly_report_body(
 ) -> str:
     pct = (fill_bytes / quota_bytes * 100) if quota_bytes else 0.0
     lines = [
-        f"LevelKeeper Monatsbericht fuer {month_key}",
+        f"LevelKeeper Monthly report for {month_key}",
         "",
-        f"Archivierte Mails:        {stats.archived_count}",
-        f"Freigegebener Speicher:   {format_bytes(stats.archived_bytes)}",
+        f"Archived mails:          {stats.archived_count}",
+        f"Freed storage:           {format_bytes(stats.archived_bytes)}",
         "",
-        f"Aktueller Fuellstand:     {format_bytes(fill_bytes)} von "
+        f"Current fill level:     {format_bytes(fill_bytes)} of "
         f"{format_bytes(quota_bytes)} ({pct:.1f}%)",
     ]
     if stats.errors:
         lines.append("")
-        lines.append(f"Fehler/Warnungen im Berichtszeitraum ({len(stats.errors)}):")
+        lines.append(f"Errors/warnings in the period ({len(stats.errors)}):")
         lines.extend(f"  - {err}" for err in stats.errors)
     return "\n".join(lines)
 
 
 def error_mail_body(reason: str, context: dict[str, str] | None = None) -> str:
     lines = [
-        "LevelKeeper hat ein kritisches Problem festgestellt und den Lauf abgebrochen.",
+        "LevelKeeper hit a critical problem and aborted the run.",
         "",
         reason,
     ]

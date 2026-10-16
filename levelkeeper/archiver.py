@@ -98,7 +98,7 @@ class Archiver:
         try:
             mount_result = check_mount(self.config.archive_root, self.config.mount_marker)
             if not mount_result.ok:
-                self._handle_critical(result, "NAS-Mount fehlt", mount_result.reason)
+                self._handle_critical(result, "NAS mount missing", mount_result.reason)
                 return result
 
             try:
@@ -108,14 +108,14 @@ class Archiver:
                 result.skipped = True
                 return result
             except OSError as exc:
-                self._handle_critical(result, "Lockfile konnte nicht angelegt werden", str(exc))
+                self._handle_critical(result, "Could not create lockfile", str(exc))
                 return result
 
             self._run_locked(result)
             return result
         except Exception as exc:  # noqa: BLE001 - always send an error mail
             logger.exception("unexpected error during run")
-            self._handle_critical(result, "Unerwarteter Fehler", f"{type(exc).__name__}: {exc}")
+            self._handle_critical(result, "Unexpected error", f"{type(exc).__name__}: {exc}")
             return result
         finally:
             try:
@@ -137,7 +137,7 @@ class Archiver:
             try:
                 client.connect()
             except (ImapError, OSError) as exc:
-                self._handle_critical(result, "IMAP-Login fehlgeschlagen", str(exc))
+                self._handle_critical(result, "IMAP login failed", str(exc))
                 return
             try:
                 self._process(client, result)
@@ -150,7 +150,7 @@ class Archiver:
         try:
             folders = client.list_folders()
         except ImapError as exc:
-            self._handle_critical(result, "IMAP-Fehler beim Auflisten der Ordner", str(exc))
+            self._handle_critical(result, "IMAP error while listing folders", str(exc))
             raise AbortRun from exc
 
         all_headers: list[MessageHeader] = []
@@ -159,7 +159,7 @@ class Archiver:
                 all_headers.extend(client.message_headers(folder))
             except ImapError as exc:
                 self._handle_critical(
-                    result, f"IMAP-Fehler beim Lesen von Ordner {folder.display_name}", str(exc)
+                    result, f"IMAP error while reading folder {folder.display_name}", str(exc)
                 )
                 raise AbortRun from exc
 
@@ -211,17 +211,17 @@ class Archiver:
 
         if fill_bytes > target:
             msg = (
-                f"Nach Verarbeitung aller nicht ausgeschlossenen Nachrichten wurde der Zielwert "
-                f"nicht erreicht (aktuell {format_bytes(fill_bytes)}, Ziel {format_bytes(target)})."
+                f"Target not reached after processing all non-excluded messages "
+                f"(now {format_bytes(fill_bytes)}, target {format_bytes(target)})."
             )
             logger.warning(msg)
-            self._pending_errors.append(f"Zielwert nicht erreichbar: {msg}")
-            self._send_error("Zielwert nicht erreichbar", msg, error_mail_body(msg))
+            self._pending_errors.append(f"Target unreachable: {msg}")
+            self._send_error("Target unreachable", msg, error_mail_body(msg))
 
     def _process_message(self, client: ImapClient, header: MessageHeader, result: RunResult) -> int:
         if self.config.dry_run:
             logger.info(
-                "[DRY-RUN] wuerde archivieren+loeschen: folder=%s uid=%s date=%s size=%s",
+                "[DRY-RUN] would archive and delete: folder=%s uid=%s date=%s size=%s",
                 header.folder.display_name,
                 header.uid,
                 header.date.isoformat(),
@@ -236,7 +236,7 @@ class Archiver:
         except ImapError as exc:
             self._handle_critical(
                 result,
-                "Nachricht konnte nicht abgerufen werden",
+                "Could not fetch message",
                 str(exc),
                 context={"folder": header.folder.display_name, "uid": header.uid},
             )
@@ -256,7 +256,7 @@ class Archiver:
             if existing is not None and not existing.ok:
                 self._handle_critical(
                     result,
-                    "Verifikation fehlgeschlagen (Konflikt im Archiv)",
+                    "Verification failed (conflict in archive)",
                     existing.reason,
                     context,
                 )
@@ -266,12 +266,10 @@ class Archiver:
                 write_eml_atomic(path, raw)
                 verify = verify_written(path, raw)
                 if not verify.ok:
-                    self._handle_critical(
-                        result, "Verifikation fehlgeschlagen", verify.reason, context
-                    )
+                    self._handle_critical(result, "Verification failed", verify.reason, context)
                     raise AbortRun
         except OSError as exc:
-            self._handle_critical(result, "Schreiben ins Archiv fehlgeschlagen", str(exc), context)
+            self._handle_critical(result, "Writing to archive failed", str(exc), context)
             raise AbortRun from exc
 
         if existing is None:
@@ -290,9 +288,7 @@ class Archiver:
         try:
             client.delete_message(header.folder, header.uid, header.uidvalidity)
         except ImapError as exc:
-            self._handle_critical(
-                result, "Loeschen auf dem Server fehlgeschlagen", str(exc), context
-            )
+            self._handle_critical(result, "Deleting on server failed", str(exc), context)
             raise AbortRun from exc
 
         result.archived_count += 1
@@ -336,7 +332,7 @@ class Archiver:
                 body = monthly_report_body(
                     month_key, stats, result.fill_after, self.config.quota_bytes
                 )
-                self.notifier.send_report(f"Monatsbericht {month_key}", body)
+                self.notifier.send_report(f"Monthly report {month_key}", body)
             self.state.mark_reported(month_key)
 
         logger.info(

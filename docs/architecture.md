@@ -1,34 +1,34 @@
-# Architektur
+# Architecture
 
-## Ablauf eines Laufs
+## Run flow
 
-Siehe `levelkeeper/archiver.py`.
+See `levelkeeper/archiver.py`.
 
-1. NAS-Mount per Marker-Datei prüfen. Fehlt er: Abbruch, Fehler-Mail, nichts wird verändert.
-2. Lockfile setzen (verhindert überlappende Läufe).
-3. Per IMAP (SSL) einloggen, alle Ordner listen und `RFC822.SIZE` über alle Ordner summieren (auch ausgeschlossene). Das ist der Füllstand.
-4. Unter dem Trigger: Ende, nur ein Log-Eintrag.
-5. Sonst alle Mails aus nicht ausgeschlossenen Ordnern nach Datum sortieren (älteste zuerst) und einzeln verarbeiten, bis der Zielwert unterschritten ist:
+1. Check the NAS mount via marker file. If missing: abort, error mail, nothing changes.
+2. Take the lockfile (prevents overlapping runs).
+3. Log in via IMAP (SSL), list all folders and sum `RFC822.SIZE` over all folders (excluded ones too). That is the fill level.
+4. Below the trigger: done, log entry only.
+5. Otherwise sort all mails from non-excluded folders by date (oldest first) and process them one by one until the target is reached:
    - `FETCH RFC822`
-   - als `.eml` atomar ins Archiv schreiben
-   - Größe und SHA-256 verifizieren
-   - erst danach auf dem Server löschen (`STORE +FLAGS \Deleted` und `UID EXPUNGE`)
-   - Scheitert ein Schritt, bricht der Lauf sofort ab und schickt eine Fehler-Mail. Die betroffene und alle weiteren Mails bleiben auf dem Server.
-6. Am 1. des Monats geht ein Monatsbericht raus, aber nur wenn im Vormonat etwas passiert ist (Archivierungen oder Fehler).
+   - write the `.eml` atomically to the archive
+   - verify size and SHA-256
+   - only then delete on the server (`STORE +FLAGS \Deleted` and `UID EXPUNGE`)
+   - If a step fails, the run aborts immediately and sends an error mail. The affected and all remaining mails stay on the server.
+6. On the 1st of the month a monthly report goes out, but only if something happened in the previous month (archivals or errors).
 
-## Module
+## Modules
 
-Alle unter `levelkeeper/`.
+All under `levelkeeper/`.
 
-| Modul | Zweck |
+| Module | Purpose |
 |---|---|
-| `config.py` | TOML + ENV, Size-/Prozent-Parsing, Validierung |
-| `imap_client.py` | IMAP-Wrapper (Ordner, Header-Scan, Fetch, Delete), Modified-UTF-7, UIDVALIDITY-Prüfung |
-| `storage.py` | Archiv-Pfad und Dateiname, atomarer Write, Checksummen-Verifikation, Idempotenz |
-| `mount_check.py` | NAS-Mount-Check per Marker-Datei |
-| `state.py` | JSON-Zustand für Monatsbericht und Fehler-Mail-Entprellung |
-| `notifier.py` / `report.py` | SMTP-Versand, Mailtexte |
-| `heartbeat.py` | optionaler Push nach erfolgreichem Lauf |
-| `lockfile.py` | Lockfile gegen überlappende Läufe |
-| `archiver.py` | Kernlogik des Laufs |
-| `scheduler.py` / `__main__.py` | Intervall-Loop und CLI-Einstieg |
+| `config.py` | TOML + ENV, size/percent parsing, validation |
+| `imap_client.py` | IMAP wrapper (folders, header scan, fetch, delete), modified UTF-7, UIDVALIDITY check |
+| `storage.py` | archive path and filename, atomic write, checksum verification, idempotency |
+| `mount_check.py` | NAS mount check via marker file |
+| `state.py` | JSON state for the monthly report and error mail dedup |
+| `notifier.py` / `report.py` | SMTP sending, mail bodies |
+| `heartbeat.py` | optional push after a successful run |
+| `lockfile.py` | lockfile against overlapping runs |
+| `archiver.py` | core run logic |
+| `scheduler.py` / `__main__.py` | interval loop and CLI entry |

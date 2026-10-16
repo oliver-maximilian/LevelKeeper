@@ -1,20 +1,20 @@
-# Betrieb
+# Operations
 
-## Benachrichtigungen
+## Notifications
 
-Versand per SMTP über `smtp.strato.de` (SSL/TLS) mit denselben Zugangsdaten wie das Postfach.
+Sent via SMTP over `smtp.strato.de` (SSL/TLS) with the same credentials as the mailbox.
 
-- **Monatsbericht** am 1. des Monats, nur wenn im Vormonat etwas passiert ist: archivierte Mails, freigegebener Speicher, Füllstand (absolut und %), Fehler.
-- **Sofortige Fehler-Mail** bei fehlendem NAS-Mount, IMAP-Login-Fehler, gescheiterter Verifikation, geänderter UIDVALIDITY und nicht erreichbarem Zielwert. Schlägt der Mailversand selbst fehl, wird das nur geloggt.
-- **Entprellung:** Dieselbe Fehler-Mail (gleicher Betreff und Grund) geht höchstens einmal pro 24 Stunden raus. Der Zeitpunkt liegt in der State-Datei und überlebt Neustarts. Der Fehler zählt trotzdem für den Monatsbericht.
-- **Heartbeat** (optional, `heartbeat_url` oder `LEVELKEEPER_HEARTBEAT_URL`): Nach jedem erfolgreichen Lauf ruft LevelKeeper die URL per GET auf, z. B. einen Uptime-Kuma-Push-Monitor. Bei abgebrochenen oder übersprungenen Läufen bleibt der Ping aus, so fällt auch ein hängender Container auf. Ein fehlgeschlagener Ping wird nur geloggt.
+- **Monthly report** on the 1st, only if something happened in the previous month: archived mails, freed storage, fill level (absolute and %), errors.
+- **Immediate error mail** on missing NAS mount, IMAP login failure, failed verification, changed UIDVALIDITY and unreachable target. If sending the mail itself fails, it is only logged.
+- **Dedup:** the same error mail (same subject and reason) goes out at most once per 24 hours. The timestamp lives in the state file and survives restarts. The error still counts for the monthly report.
+- **Heartbeat** (optional, `heartbeat_url` or `LEVELKEEPER_HEARTBEAT_URL`): after every successful run LevelKeeper sends a GET to the URL, e.g. an Uptime Kuma push monitor. Aborted or skipped runs send no ping, so a hung or stopped container shows up too. A failed ping is only logged.
 
-## Betriebssicherheit
+## Operational safety
 
-- **Dry-Run** (`dry_run` / `--dry-run`): schreibt und löscht nichts, loggt nur.
-- **Lockfile:** verhindert überlappende Läufe und räumt Locks toter Prozesse selbst auf.
-- **Logging:** nach stdout, `log_format = "text"` oder `"json"`. Jeder Lauf loggt Füllstand, Aktionen, Dauer und Ergebnis.
-- **Idempotenz:** Der Dateiname im Archiv leitet sich deterministisch aus der Message-ID ab (Fallback: Inhalt). Bricht ein Lauf zwischen Schreiben und Löschen ab, erkennt der nächste die verifizierte Datei und überspringt das Schreiben. Es entstehen keine Duplikate.
-- **Große Mails:** Mails über `max_message_size` bekommen eine eigene Log-Zeile und blockieren den Lauf nicht.
-- **UIDVALIDITY:** Der Scan merkt sich sie je Ordner und prüft sie vor Abruf und Löschen erneut. Hat der Server den Ordner neu aufgebaut, bricht der Lauf mit Fehler-Mail ab, statt per alter UID eine falsche Mail zu löschen.
-- **Gezieltes Löschen:** per `UID EXPUNGE` (UIDPLUS). Nur die archivierte Mail verschwindet, im Mail-Client als gelöscht markierte Mails bleiben unberührt. Meldet der Server kein UIDPLUS, löscht LevelKeeper nichts und meldet einen Fehler.
+- **Dry run** (`dry_run` / `--dry-run`): writes and deletes nothing, only logs.
+- **Lockfile:** prevents overlapping runs and cleans up locks of dead processes itself.
+- **Logging:** to stdout, `log_format = "text"` or `"json"`. Every run logs fill level, actions, duration and result.
+- **Idempotency:** the archive filename is derived deterministically from the Message-ID (fallback: content). If a run aborts between write and delete, the next run recognizes the verified file and skips the write. No duplicates.
+- **Large mails:** mails above `max_message_size` get their own log line and do not block the run.
+- **UIDVALIDITY:** the scan remembers it per folder and checks it again before fetch and delete. If the server rebuilt the folder, the run aborts with an error mail instead of deleting a wrong mail via a stale UID.
+- **Targeted delete:** via `UID EXPUNGE` (UIDPLUS). Only the archived mail disappears, mails flagged as deleted in the mail client stay untouched. If the server lacks UIDPLUS, LevelKeeper deletes nothing and reports an error.

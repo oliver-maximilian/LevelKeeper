@@ -2,7 +2,7 @@
 # (at least this file + .env) and start it there.
 # No `--env-file .env.<name>`: it only fills ${...} here, `env_file:` stays
 # `.env`, so the wrong credentials get loaded. See docs/setup.md
-# "Mehrere Postfächer".
+# "Multiple mailboxes".
 
 services:
   levelkeeper:

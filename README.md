@@ -1,10 +1,10 @@
 # LevelKeeper
 
-Hält ein IMAP-Postfach unter einem Füllstand. Wird der Trigger überschritten, archiviert LevelKeeper die ältesten Mails als `.eml` aufs NAS und löscht sie erst nach verifizierter Ablage vom Server.
+Keeps an IMAP mailbox below a fill level. Once the trigger is exceeded, LevelKeeper archives the oldest mails as `.eml` to the NAS and deletes them from the server only after the copy is verified.
 
-Ein Deployment verwaltet ein Postfach. Für mehrere Postfächer laufen mehrere Instanzen (Compose-Projekte) mit eigener Konfiguration.
+One deployment manages one mailbox. For more mailboxes, run several instances (Compose projects) with their own configuration.
 
-## Kurzstart
+## Quick start
 
 ```
 cp .env.example .env
@@ -12,26 +12,26 @@ docker compose run --rm levelkeeper --once --dry-run
 docker compose up -d
 ```
 
-Vor dem ersten echten Lauf den Dry-Run prüfen und den NAS-Mount einrichten. Details in [docs/setup.md](docs/setup.md).
+Check the dry run and set up the NAS mount before the first real run. Details in [docs/setup.md](docs/setup.md).
 
-## Dokumentation
+## Documentation
 
-- [docs/architecture.md](docs/architecture.md): Ablauf eines Laufs, Module
-- [docs/setup.md](docs/setup.md): NAS-Mount, Konfiguration, Dry-Run, Betrieb, mehrere Postfächer
-- [docs/operations.md](docs/operations.md): Benachrichtigungen, Betriebssicherheit
-- [GitHub Releases](https://github.com/oliver-maximilian/LevelKeeper/releases): Änderungen je Version (`git-cliff`, siehe `just changelog`)
+- [docs/architecture.md](docs/architecture.md): run flow, modules
+- [docs/setup.md](docs/setup.md): NAS mount, configuration, dry run, operation, multiple mailboxes
+- [docs/operations.md](docs/operations.md): notifications, operational safety
+- [GitHub Releases](https://github.com/oliver-maximilian/LevelKeeper/releases): changes per version (`git-cliff`, see `just changelog`)
 
-## Nicht-Ziele
+## Non-goals
 
-- Keine Volltextsuche oder Index über das Archiv.
-- Kein Zurückspielen ins Postfach (Restore = `.eml` manuell im Mail-Client importieren).
-- Keine GoBD-/Compliance-Archivierung, nur privates Werkzeug.
+- No full-text search or index over the archive.
+- No restore into the mailbox (restore = import the `.eml` manually in a mail client).
+- No GoBD/compliance archiving, private tool only.
 
-## Entwicklung
+## Development
 
 ```
 just init
 just test
 ```
 
-Weitere Kommandos im [justfile](justfile) (`run`, `format`, `lint`, `changelog`). Keine Laufzeit-Abhängigkeiten: nur Standardbibliothek (`imaplib`, `email`, `smtplib`, `tomllib`), Python 3.11+.
+More commands in the [justfile](justfile) (`run`, `format`, `lint`, `changelog`). No runtime dependencies: standard library only (`imaplib`, `email`, `smtplib`, `tomllib`), Python 3.11+.
