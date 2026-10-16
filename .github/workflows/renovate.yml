@@ -1,0 +1,25 @@
+name: Renovate
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+# Needs the secret RENOVATE_TOKEN (PAT, see docs/operations.md). GITHUB_TOKEN
+# won't do: PRs it opens don't trigger Test/Lint, so automerge would never fire.
+permissions: {}
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: renovatebot/github-action@v46.3.8
+        with:
+          token: ${{ secrets.RENOVATE_TOKEN }}
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ONBOARDING: "false"

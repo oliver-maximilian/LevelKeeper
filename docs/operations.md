@@ -19,3 +19,16 @@ Sent via SMTP over `smtp.strato.de` (SSL/TLS) with the same credentials as the m
 - **Large mails:** mails above `max_message_size` get their own log line and do not block the run.
 - **UIDVALIDITY:** the scan remembers it per folder and checks it again before fetch and delete. If the server rebuilt the folder, the run aborts with an error mail instead of deleting a wrong mail via a stale UID.
 - **Targeted delete:** via `UID EXPUNGE` (UIDPLUS). Only the archived mail disappears, mails flagged as deleted in the mail client stay untouched. If the server lacks UIDPLUS, LevelKeeper deletes nothing and reports an error.
+
+## Dependency updates
+
+Renovate runs hourly as a GitHub Action (`.github/workflows/renovate.yml`, config in `renovate.json`). It opens PRs on Monday mornings and merges non-major updates of the CI actions and the Dovecot test image once Test and Lint are green. Everything else waits for review.
+
+Setup, once:
+
+1. Create a classic personal access token with the scopes `public_repo` (public repo) and `workflow` (needed to update the Actions in `.github/workflows`).
+2. Save it as the repo secret `RENOVATE_TOKEN`.
+
+A fine-grained token works for updates but has gaps around the Checks API. Automerge waits for the Actions check runs, so a classic token is the safer default (as the Renovate action recommends). Fine-grained needs Commit statuses, Contents, Issues, Pull requests and Workflows, all read and write.
+
+The default `GITHUB_TOKEN` is not enough. PRs it opens don't trigger Test and Lint, so automerge would never fire. Scheduled workflows are disabled after 60 days without repo activity, so re-enable the workflow in the Actions tab if that happens.
