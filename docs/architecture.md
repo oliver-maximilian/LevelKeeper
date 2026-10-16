@@ -26,9 +26,10 @@ All under `levelkeeper/`.
 | `imap_client.py` | IMAP wrapper (folders, header scan, fetch, delete), modified UTF-7, UIDVALIDITY check |
 | `storage.py` | archive path and filename, atomic write, checksum verification, idempotency |
 | `mount_check.py` | NAS mount check via marker file |
-| `state.py` | JSON state for the monthly report and error mail dedup |
+| `state.py` | JSON state for the monthly report, error mail dedup and last success |
 | `notifier.py` / `report.py` | SMTP sending, mail bodies |
 | `heartbeat.py` | optional push after a successful run |
+| `health.py` | Docker healthcheck (last successful run is recent) |
 | `lockfile.py` | lockfile against overlapping runs |
 | `archiver.py` | core run logic |
 | `scheduler.py` / `__main__.py` | interval loop and CLI entry |

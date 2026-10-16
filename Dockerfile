@@ -10,4 +10,7 @@ COPY --chown=levelkeeper:levelkeeper levelkeeper ./levelkeeper
 USER levelkeeper
 ENV PYTHONUNBUFFERED=1
 
+HEALTHCHECK --interval=5m --timeout=10s --start-period=15m \
+    CMD ["python", "-m", "levelkeeper", "--healthcheck"]
+
 ENTRYPOINT ["python", "-m", "levelkeeper"]

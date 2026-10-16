@@ -32,7 +32,7 @@ error_recipients = ["user@example.com"]
 
 [runtime]
 log_level = "INFO"
-log_format = "text"
+log_format = "json"
 dry_run = true
 # Empty: run once and exit (host cron).
 run_interval = "1h"

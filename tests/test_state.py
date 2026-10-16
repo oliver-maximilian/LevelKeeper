@@ -56,3 +56,13 @@ def test_error_mail_cooldown(tmp_path):
     assert not reloaded.error_mail_due("k", now + timedelta(hours=23), cooldown)
     assert reloaded.error_mail_due("k", now + timedelta(hours=24), cooldown)
     assert reloaded.error_mail_due("other", now, cooldown)
+
+
+def test_last_success_roundtrip(tmp_path):
+    from datetime import UTC, datetime
+
+    store = StateStore(tmp_path / "state.json")
+    assert store.last_success() is None
+    now = datetime(2026, 6, 1, 12, tzinfo=UTC)
+    store.mark_success(now)
+    assert StateStore(tmp_path / "state.json").last_success() == now

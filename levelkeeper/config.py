@@ -153,7 +153,15 @@ def _apply_env_overrides(cfg: Config) -> None:
     env = os.environ
 
     def get(name: str) -> str | None:
-        return env.get(_ENV_PREFIX + name)
+        """LEVELKEEPER_<name>, else the content of the file in LEVELKEEPER_<name>_FILE."""
+        if value := env.get(_ENV_PREFIX + name):
+            return value
+        if path := env.get(f"{_ENV_PREFIX}{name}_FILE"):
+            try:
+                return Path(path).read_text().rstrip("\r\n")
+            except OSError as exc:
+                raise ConfigError(f"cannot read {_ENV_PREFIX}{name}_FILE ({path}): {exc}") from exc
+        return None
 
     if v := get("IMAP_HOST"):
         cfg.imap_host = v

@@ -11,9 +11,10 @@ Sent via SMTP over `smtp.strato.de` (SSL/TLS) with the same credentials as the m
 
 ## Operational safety
 
+- **Healthcheck:** the image checks every 5 minutes (`--healthcheck`) that the last successful run is younger than 3 intervals. Without `run_interval` (host cron) it always passes. `docker ps` shows `unhealthy` for a stuck or constantly failing container, and aborted runs do not count as success.
 - **Dry run** (`dry_run` / `--dry-run`): writes and deletes nothing, only logs.
 - **Lockfile:** prevents overlapping runs and cleans up locks of dead processes itself.
-- **Logging:** to stdout, `log_format = "text"` or `"json"`. Every run logs fill level, actions, duration and result.
+- **Logging:** to stdout, `log_format = "json"` (default in the examples, for Loki) or `"text"`. Every run logs fill level, actions, duration and result.
 - **Idempotency:** the archive filename is derived deterministically from the Message-ID (fallback: content). If a run aborts between write and delete, the next run recognizes the verified file and skips the write. No duplicates.
 - **Large mails:** mails above `max_message_size` get their own log line and do not block the run.
 - **UIDVALIDITY:** the scan remembers it per folder and checks it again before fetch and delete. If the server rebuilt the folder, the run aborts with an error mail instead of deleting a wrong mail via a stale UID.

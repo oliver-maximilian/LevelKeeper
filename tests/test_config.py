@@ -147,3 +147,55 @@ def test_heartbeat_url_must_be_http(monkeypatch):
     )
     with pytest.raises(ConfigError):
         cfg.resolve_and_validate()
+
+
+def _base_env(monkeypatch):
+    for k, v in {
+        "IMAP_HOST": "h",
+        "IMAP_USER": "u",
+        "SMTP_HOST": "h",
+        "SMTP_USER": "u",
+        "SMTP_PASSWORD": "p",
+        "ARCHIVE_ROOT": "/a",
+        "QUOTA": "1GB",
+        "TRIGGER": "80%",
+        "TARGET": "70%",
+        "MAX_MESSAGE_SIZE": "10MB",
+        "REPORT_RECIPIENTS": "a@b.c",
+    }.items():
+        monkeypatch.setenv(f"LEVELKEEPER_{k}", v)
+
+
+def test_secret_from_file(tmp_path, monkeypatch):
+    from levelkeeper.config import load_config
+
+    _base_env(monkeypatch)
+    secret = tmp_path / "imap_pw"
+    secret.write_text("s3cret\n")
+    monkeypatch.setenv("LEVELKEEPER_IMAP_PASSWORD_FILE", str(secret))
+
+    assert load_config(None).imap_password == "s3cret"
+
+
+def test_plain_env_wins_over_file(tmp_path, monkeypatch):
+    from levelkeeper.config import load_config
+
+    _base_env(monkeypatch)
+    secret = tmp_path / "imap_pw"
+    secret.write_text("from-file")
+    monkeypatch.setenv("LEVELKEEPER_IMAP_PASSWORD", "from-env")
+    monkeypatch.setenv("LEVELKEEPER_IMAP_PASSWORD_FILE", str(secret))
+
+    assert load_config(None).imap_password == "from-env"
+
+
+def test_unreadable_secret_file_is_a_config_error(tmp_path, monkeypatch):
+    import pytest
+
+    from levelkeeper.config import ConfigError, load_config
+
+    _base_env(monkeypatch)
+    monkeypatch.setenv("LEVELKEEPER_IMAP_PASSWORD_FILE", str(tmp_path / "missing"))
+
+    with pytest.raises(ConfigError):
+        load_config(None)

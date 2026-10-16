@@ -10,6 +10,7 @@ import sys
 
 from levelkeeper.archiver import Archiver
 from levelkeeper.config import ConfigError, load_config
+from levelkeeper.health import check_health
 from levelkeeper.logging_setup import setup_logging
 from levelkeeper.notifier import Notifier
 from levelkeeper.scheduler import parse_interval, run_forever
@@ -27,7 +28,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--dry-run", action="store_true", help="force dry-run mode regardless of configuration"
     )
+    parser.add_argument(
+        "--healthcheck", action="store_true", help="exit 0 if the last run succeeded recently"
+    )
     return parser.parse_args(argv)
+
+
+def _healthcheck(config) -> int:
+    try:
+        interval = parse_interval(config.run_interval)
+    except ValueError as exc:
+        print(f"levelkeeper: invalid run_interval: {exc}", file=sys.stderr)
+        return 1
+    healthy, reason = check_health(config.state_path, interval)
+    print(reason)
+    return 0 if healthy else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -39,6 +54,9 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as exc:
         print(f"levelkeeper: configuration error: {exc}", file=sys.stderr)
         return 2
+
+    if args.healthcheck:
+        return _healthcheck(config)
 
     if args.dry_run:
         config.dry_run = True

@@ -94,6 +94,17 @@ class StateStore:
         self._data["reported_through"] = month_key
         self._save()
 
+    def mark_success(self, now: datetime) -> None:
+        self._data["last_success"] = now.isoformat()
+        self._save()
+
+    def last_success(self) -> datetime | None:
+        raw = self._data.get("last_success")
+        try:
+            return datetime.fromisoformat(raw) if raw else None
+        except ValueError:
+            return None
+
     def error_mail_due(self, key: str, now: datetime, cooldown: timedelta) -> bool:
         """True unless a mail for this error key went out within `cooldown`."""
         raw = self._data.get("error_mails", {}).get(key)

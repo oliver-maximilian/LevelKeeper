@@ -33,6 +33,21 @@ Key values:
 - `run_interval`: e.g. `1h`. Leave empty if host cron calls `docker compose run` (see below).
 - `heartbeat_url`: optional push after every successful run (Uptime Kuma).
 
+### Secrets from files
+
+Every `LEVELKEEPER_<NAME>` also accepts `LEVELKEEPER_<NAME>_FILE` with a path, e.g. for Docker secrets. The plain variable wins if both are set, trailing newlines are stripped.
+
+```
+services:
+  levelkeeper:
+    environment:
+      LEVELKEEPER_IMAP_PASSWORD_FILE: /run/secrets/imap_password
+    secrets: [imap_password]
+secrets:
+  imap_password:
+    file: ./secrets/imap_password
+```
+
 ## 3. Data directory
 
 `/data` holds the lockfile and the state for the monthly report and error mail dedup. It must survive restarts.

@@ -323,6 +323,8 @@ class Archiver:
         errors = list(self._pending_errors)
         self.state.record_run(today, result.archived_count, result.archived_bytes, errors)
         self._pending_errors = []
+        if not result.aborted:
+            self.state.mark_success(datetime.now(UTC))
 
         pending = self.state.pending_monthly_report(today)
         if pending is not None:
