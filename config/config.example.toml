@@ -1,6 +1,5 @@
-# Copy to config.toml (or set the equivalent LEVELKEEPER_* env vars instead -
-# env vars always take precedence over this file). Keep credentials out of
-# this file if it will be committed anywhere; prefer .env for those.
+# Copy to config.toml, or use LEVELKEEPER_* env vars (they win over this file).
+# Credentials preferably in .env.
 
 [imap]
 host = "imap.strato.de"
@@ -16,8 +15,7 @@ password = "changeme"
 from_addr = "user@example.com"
 
 [quota]
-# Absolute sizes ("1.5GB") or percentages ("80%", relative to quota) are
-# both accepted for trigger/target. target must be lower than trigger.
+# trigger/target: absolute ("1.5GB") or percent of quota ("80%"). target < trigger.
 quota = "2GB"
 trigger = "80%"
 target = "70%"
@@ -36,9 +34,9 @@ error_recipients = ["user@example.com"]
 log_level = "INFO"
 log_format = "text"
 dry_run = true
-# Empty string = run once and exit (use host cron + `docker compose run` instead).
+# Empty: run once and exit (host cron).
 run_interval = "1h"
 state_path = "/data/state.json"
 lock_file = "/data/levelkeeper.lock"
-# Optional: push URL (e.g. Uptime Kuma push monitor), called after every successful run.
+# Optional push URL (Uptime Kuma), called after every successful run.
 # heartbeat_url = "https://kuma.example.com/api/push/TOKEN?status=up&msg=OK"

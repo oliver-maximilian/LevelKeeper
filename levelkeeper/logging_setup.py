@@ -1,4 +1,4 @@
-"""Structured logging to stdout (the Docker-native place to look for it)."""
+"""Logging to stdout."""
 
 from __future__ import annotations
 

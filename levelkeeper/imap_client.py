@@ -1,8 +1,7 @@
-"""Thin IMAP wrapper: folder listing, header enumeration, fetch and delete.
+"""Thin IMAP wrapper: folders, header scan, fetch, delete.
 
-Everything that touches message identity is done via UID commands so that
-sequence-number drift from an EXPUNGE mid-run never causes us to act on the
-wrong message.
+All message identity goes through UIDs, so an EXPUNGE mid-run can't shift us
+onto the wrong message.
 """
 
 from __future__ import annotations
@@ -27,11 +26,11 @@ _FETCH_BATCH_SIZE = 300
 
 
 class ImapError(RuntimeError):
-    """Raised for any non-OK IMAP response."""
+    """Non-OK IMAP response."""
 
 
 def decode_modified_utf7(text: str) -> str:
-    """Decode IMAP modified UTF-7 (RFC 3501 5.1.3) into a normal str."""
+    """IMAP modified UTF-7 (RFC 3501 5.1.3) to str."""
     result = []
     i = 0
     n = len(text)
@@ -72,7 +71,7 @@ def _parse_list_line(line: bytes) -> tuple[str, str] | None:
 
 
 def folder_display_path(raw_name: str, delimiter: str) -> str:
-    """Human-readable, filesystem-friendly path for a raw IMAP mailbox name."""
+    """Filesystem-friendly path for a raw mailbox name."""
     decoded = decode_modified_utf7(raw_name)
     if delimiter and delimiter != "/":
         decoded = decoded.replace(delimiter, "/")
@@ -106,7 +105,7 @@ class MessageHeader:
 
 
 class UidValidityChanged(ImapError):
-    """The folder's UIDVALIDITY differs from the one the UIDs were collected under."""
+    """UIDVALIDITY changed since the UIDs were collected."""
 
 
 class ImapClient:
@@ -155,7 +154,7 @@ class ImapClient:
     def _select_folder(
         self, folder: FolderInfo, readonly: bool, expect_uidvalidity: str | None = None
     ) -> None:
-        """Select a folder; UIDs are only meaningful under the UIDVALIDITY they were read with."""
+        """Select a folder and check UIDVALIDITY against the one the UIDs came from."""
         assert self._imap is not None
         want = (folder.raw_name, readonly)
         if self._selected != want:
@@ -199,10 +198,7 @@ class ImapClient:
         return folders
 
     def message_headers(self, folder: FolderInfo) -> list[MessageHeader]:
-        """Enumerate every message in a folder with size/date/message-id.
-
-        Uses BODY.PEEK so the \\Seen flag is never touched.
-        """
+        """All messages of a folder (size, date, message-id). BODY.PEEK keeps \\Seen untouched."""
         assert self._imap is not None
         self._select_folder(folder, readonly=True)
         typ, data = self._imap.uid("search", None, "ALL")
@@ -283,11 +279,10 @@ class ImapClient:
         raise ImapError(f"no message body returned for uid={uid} in {folder.display_name!r}")
 
     def delete_message(self, folder: FolderInfo, uid: str, uidvalidity: str | None = None) -> None:
-        """Delete exactly one message by UID.
+        """Delete one message via UID EXPUNGE (UIDPLUS).
 
-        Uses UID EXPUNGE (UIDPLUS) so other messages the user merely flagged
-        \\Deleted are never purged as a side effect. Without UIDPLUS there is no
-        safe way to do that, so we refuse instead of falling back to EXPUNGE.
+        Plain EXPUNGE would also purge messages the user flagged \\Deleted.
+        Without UIDPLUS we refuse instead of falling back.
         """
         assert self._imap is not None
         if not self._uidplus:

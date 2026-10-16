@@ -1,44 +1,34 @@
 # Architektur
 
-## Wie es funktioniert
+## Ablauf eines Laufs
 
-Jeder Lauf (siehe `levelkeeper/archiver.py`):
+Siehe `levelkeeper/archiver.py`.
 
-1. Prüft, ob das Archiv-Verzeichnis (NAS-Mount) tatsächlich verfügbar
-   ist (Marker-Datei-Check). Wenn nicht: Abbruch, Fehler-Mail, nichts
-   wird verändert.
-2. Verhindert überlappende Läufe per Lockfile.
-3. Loggt sich per IMAP (SSL) ein, listet alle Ordner, summiert
-   `RFC822.SIZE` über **alle** Ordner (auch ausgeschlossene) →
-   Füllstand.
-4. Ist der Füllstand unter dem Trigger: Ende, nur Log-Eintrag.
-5. Sonst: alle Nachrichten aus nicht ausgeschlossenen Ordnern werden
-   nach Datum sortiert (älteste zuerst) und einzeln verarbeitet, bis
-   der Zielwert unterschritten ist:
-   - `FETCH RFC822` vollständig abrufen
-   - als `.eml` ins Archiv schreiben (atomarer Write)
-   - Schreibvorgang verifizieren (Dateigröße + SHA-256)
-   - **erst danach** auf dem Server löschen (`STORE +FLAGS \Deleted`
-     + `EXPUNGE`)
-   - schlägt irgendein Schritt fehl: Lauf bricht sofort ab,
-     Fehler-Mail, die betroffene (und alle weiteren) Nachrichten
-     bleiben unangetastet auf dem Server.
-6. Am 1. des Monats: Versand eines Monatsberichts, aber nur wenn im
-   Vormonat tatsächlich etwas passiert ist (Archivierungen oder
-   Fehler).
+1. NAS-Mount per Marker-Datei prüfen. Fehlt er: Abbruch, Fehler-Mail, nichts wird verändert.
+2. Lockfile setzen (verhindert überlappende Läufe).
+3. Per IMAP (SSL) einloggen, alle Ordner listen und `RFC822.SIZE` über alle Ordner summieren (auch ausgeschlossene). Das ist der Füllstand.
+4. Unter dem Trigger: Ende, nur ein Log-Eintrag.
+5. Sonst alle Mails aus nicht ausgeschlossenen Ordnern nach Datum sortieren (älteste zuerst) und einzeln verarbeiten, bis der Zielwert unterschritten ist:
+   - `FETCH RFC822`
+   - als `.eml` atomar ins Archiv schreiben
+   - Größe und SHA-256 verifizieren
+   - erst danach auf dem Server löschen (`STORE +FLAGS \Deleted` und `UID EXPUNGE`)
+   - Scheitert ein Schritt, bricht der Lauf sofort ab und schickt eine Fehler-Mail. Die betroffene und alle weiteren Mails bleiben auf dem Server.
+6. Am 1. des Monats geht ein Monatsbericht raus, aber nur wenn im Vormonat etwas passiert ist (Archivierungen oder Fehler).
 
 ## Module
 
-Alle Bausteine liegen unter `levelkeeper/`:
+Alle unter `levelkeeper/`.
 
 | Modul | Zweck |
 |---|---|
-| `config.py` | TOML + ENV Konfiguration, Size-/Prozent-Parsing, Validierung |
-| `imap_client.py` | IMAP-Wrapper (Ordner, Header-Scan, Fetch, Delete), Modified-UTF-7 |
-| `storage.py` | Archiv-Pfad/-Dateiname, atomarer Write, Checksummen-Verifikation, Idempotenz |
+| `config.py` | TOML + ENV, Size-/Prozent-Parsing, Validierung |
+| `imap_client.py` | IMAP-Wrapper (Ordner, Header-Scan, Fetch, Delete), Modified-UTF-7, UIDVALIDITY-Prüfung |
+| `storage.py` | Archiv-Pfad und Dateiname, atomarer Write, Checksummen-Verifikation, Idempotenz |
 | `mount_check.py` | NAS-Mount-Check per Marker-Datei |
-| `state.py` | Persistenter JSON-Zustand für den Monatsbericht |
+| `state.py` | JSON-Zustand für Monatsbericht und Fehler-Mail-Entprellung |
 | `notifier.py` / `report.py` | SMTP-Versand, Mailtexte |
-| `lockfile.py` | Verhindert überlappende Läufe |
-| `archiver.py` | Kernlogik/Orchestrierung des Laufs |
-| `scheduler.py` / `__main__.py` | interner Intervall-Loop bzw. CLI-Einstieg |
+| `heartbeat.py` | optionaler Push nach erfolgreichem Lauf |
+| `lockfile.py` | Lockfile gegen überlappende Läufe |
+| `archiver.py` | Kernlogik des Laufs |
+| `scheduler.py` / `__main__.py` | Intervall-Loop und CLI-Einstieg |

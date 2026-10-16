@@ -1,8 +1,6 @@
-"""Configuration loading, size/threshold parsing and validation.
+"""Config loading (optional TOML, ENV on top), size/threshold parsing, validation.
 
-Config comes from a TOML file (optional) with ENV variables layered on top,
-so credentials can be kept out of the file entirely if desired. Sizes are
-interpreted as binary multiples (1 GB == 1024**3 bytes) - see README.
+Sizes are binary (1 GB == 1024**3 bytes).
 """
 
 from __future__ import annotations
@@ -30,7 +28,7 @@ class ConfigError(ValueError):
 
 
 def parse_size(value: str | int | float) -> int:
-    """Parse a human size string ("1.5GB", "2048", "500MB") into bytes."""
+    """Size string ("1.5GB", "2048", "500MB") to bytes."""
     if isinstance(value, (int, float)):
         return int(value)
     text = str(value).strip()
@@ -49,7 +47,7 @@ def parse_size(value: str | int | float) -> int:
 
 
 def parse_threshold(value: str | int | float, quota_bytes: int) -> int:
-    """Parse an absolute size or a percentage (of quota_bytes) into bytes."""
+    """Absolute size or percentage of quota_bytes to bytes."""
     text = str(value).strip()
     if text.endswith("%"):
         try:
@@ -83,7 +81,7 @@ class Config:
     smtp_password: str = ""
     smtp_from_addr: str = ""
 
-    # Thresholds (raw config strings, resolved to bytes after quota is known)
+    # Thresholds (raw strings, resolved to bytes in validation)
     quota: str = ""
     trigger: str = ""
     target: str = ""
@@ -102,12 +100,12 @@ class Config:
     log_level: str = "INFO"
     log_format: str = "text"
     dry_run: bool = False
-    run_interval: str = ""  # empty => run once and exit
+    run_interval: str = ""  # empty: run once and exit
     state_path: str = "/data/state.json"
     lock_file: str = "/data/levelkeeper.lock"
-    heartbeat_url: str = ""  # optional push URL (e.g. Uptime Kuma), pinged after each OK run
+    heartbeat_url: str = ""  # push URL (Uptime Kuma), pinged after each OK run
 
-    # Resolved at validation time (bytes)
+    # Resolved in validation (bytes)
     quota_bytes: int = 0
     trigger_bytes: int = 0
     target_bytes: int = 0
@@ -257,7 +255,7 @@ def _apply_toml(cfg: Config, data: dict) -> None:
 
 
 def load_config(path: str | Path | None) -> Config:
-    """Load config from an optional TOML file, then apply ENV overrides."""
+    """Optional TOML, then ENV overrides."""
     cfg = Config()
     if path is not None and Path(path).is_file():
         with open(path, "rb") as f:

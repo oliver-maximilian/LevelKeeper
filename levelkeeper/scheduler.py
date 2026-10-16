@@ -1,4 +1,4 @@
-"""Internal interval scheduler (alternative to driving the container via host cron)."""
+"""Internal interval scheduler (alternative to host cron)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ _UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400, "": 1}
 
 
 def parse_interval(value: str) -> float | None:
-    """Parse "1h", "30m", "3600" into seconds. Empty/blank => None (run once)."""
+    """ "1h", "30m", "3600" to seconds. Blank: None (run once)."""
     if not value or not value.strip():
         return None
     match = _INTERVAL_RE.match(value)

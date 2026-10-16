@@ -1,10 +1,8 @@
 """Core run loop: fill-level check, oldest-first archiving, verified deletes.
 
-Safety invariant enforced throughout: a message is only ever deleted from the
-server after its .eml has been written to the archive AND verified (size +
-SHA-256) against the bytes fetched from the server. Any failure along that
-path aborts the whole run immediately and leaves the affected (and all
-remaining) messages untouched on the server.
+Invariant: a message is deleted from the server only after its .eml is written
+and verified (size + SHA-256). Any failure aborts the run and leaves the
+affected and all remaining messages on the server.
 """
 
 from __future__ import annotations
@@ -32,12 +30,12 @@ from levelkeeper.storage import (
 
 logger = logging.getLogger(__name__)
 
-# An identical error mail is sent at most once per this period.
+# same error mail at most once per period
 ERROR_MAIL_COOLDOWN = timedelta(hours=24)
 
 
 class AbortRun(RuntimeError):
-    """Internal signal that a run was aborted; details already logged/notified."""
+    """Run aborted, already logged and notified."""
 
 
 @dataclass
@@ -115,7 +113,7 @@ class Archiver:
 
             self._run_locked(result)
             return result
-        except Exception as exc:  # noqa: BLE001 - any unhandled failure must still send an error mail
+        except Exception as exc:  # noqa: BLE001 - always send an error mail
             logger.exception("unexpected error during run")
             self._handle_critical(result, "Unerwarteter Fehler", f"{type(exc).__name__}: {exc}")
             return result
@@ -128,7 +126,7 @@ class Archiver:
             if not result.skipped:
                 try:
                     self._record_and_maybe_report(result, today)
-                except Exception:  # noqa: BLE001 - must never crash the scheduler loop
+                except Exception:  # noqa: BLE001 - never crash the scheduler loop
                     logger.exception("failed to persist run state or send monthly report")
                 if not result.aborted and self.config.heartbeat_url:
                     send_heartbeat(self.config.heartbeat_url)
@@ -311,14 +309,14 @@ class Archiver:
         self._send_error(subject, reason, error_mail_body(reason, context))
 
     def _send_error(self, subject: str, reason: str, body: str) -> None:
-        """Send an error mail unless the same error was already mailed within the cooldown."""
+        """Send unless the same error was mailed within the cooldown."""
         key = hashlib.sha256(f"{subject}\n{reason}".encode()).hexdigest()[:16]
         now = datetime.now(UTC)
         try:
             if not self.state.error_mail_due(key, now, ERROR_MAIL_COOLDOWN):
                 logger.info("suppressing repeated error mail %r (cooldown)", subject)
                 return
-        except Exception:  # noqa: BLE001 - dedup must never block an alert
+        except Exception:  # noqa: BLE001 - dedup never blocks an alert
             logger.exception("error mail dedup check failed, sending anyway")
         if self.notifier.send_error(subject, body):
             try:

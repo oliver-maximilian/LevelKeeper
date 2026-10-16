@@ -80,7 +80,7 @@ class StateStore:
         self._save()
 
     def pending_monthly_report(self, today: date) -> tuple[str, MonthStats | None] | None:
-        """(month_key, stats) for the previous month if a report is due today, else None."""
+        """(month_key, stats) of the previous month if a report is due today."""
         if today.day != 1:
             return None
         prev_month = _previous_month_key(today)

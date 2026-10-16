@@ -1,9 +1,4 @@
-"""CLI entrypoint.
-
-Works both as a long-running container (internal scheduler loop, when
-run_interval is configured) and as a one-shot invocation for host-cron style
-scheduling (`docker compose run levelkeeper` or `--once`).
-"""
+"""CLI entrypoint: long-running with run_interval, one-shot with --once or host cron."""
 
 from __future__ import annotations
 

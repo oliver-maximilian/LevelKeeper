@@ -1,11 +1,8 @@
-"""NAS mount verification.
+"""NAS mount check via marker file.
 
-A Docker bind mount always shows up as a mount point inside the container,
-even when the *host* side failed to mount the NAS share (Docker will happily
-bind-mount whatever empty local directory happens to sit at that host path).
-So `os.path.ismount()` alone is not reliable from inside the container. The
-authoritative check is a marker file that only exists on the real NAS share -
-create it once during setup, see README.
+A bind mount looks mounted in the container even if the host failed to mount
+the share (Docker binds the empty local dir), so os.path.ismount() is not
+enough. The marker exists only on the real share (created once, see setup.md).
 """
 
 from __future__ import annotations

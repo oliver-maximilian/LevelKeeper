@@ -1,4 +1,4 @@
-"""Optional heartbeat push after a successful run (e.g. Uptime Kuma push monitor)."""
+"""Heartbeat push after a successful run (Uptime Kuma)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def send_heartbeat(url: str, timeout: float = 10.0) -> bool:
-    """GET the push URL. Never raises: a broken monitor must not affect a run."""
+    """GET the push URL. Never raises."""
     if not url:
         return False
     try:

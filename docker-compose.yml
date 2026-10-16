@@ -1,15 +1,8 @@
-# Single mailbox per deployment. For a second mailbox, copy this whole
-# project directory (or at least this file + .env) into its own directory
-# and run `docker compose up -d` there - each directory gets its own plain
-# `.env`, so nothing needs to be passed on the command line.
-#
-# Do NOT try to reuse one directory for multiple mailboxes via
-# `--env-file .env.<name>`: that flag only feeds ${...} substitutions in
-# this file (like NAS_ARCHIVE_PATH below); it does NOT change which file
-# the `env_file:` key below loads into the container, which stays hardcoded
-# to plain `.env`. Mixing the two silently loads the wrong credentials (or
-# fails with a cryptic "variable is missing a value" error). See
-# docs/setup.md "Mehrere Postfächer".
+# One mailbox per deployment. Second mailbox: copy the project directory
+# (at least this file + .env) and start it there.
+# No `--env-file .env.<name>`: it only fills ${...} here, `env_file:` stays
+# `.env`, so the wrong credentials get loaded. See docs/setup.md
+# "Mehrere Postfächer".
 
 services:
   levelkeeper:
@@ -19,15 +12,11 @@ services:
     env_file:
       - .env
     volumes:
-      # Config file (optional if everything is supplied via .env).
+      # optional if everything is in .env
       - ${CONFIG_PATH:-./config/config.toml}:/config/config.toml:ro
-      # Persistent state (monthly stats, lockfile). Must survive restarts.
+      # state + lockfile, must survive restarts
       - ${DATA_PATH:-./data}:/data
-      # NAS share, already mounted on the HOST via fstab/systemd-mount
-      # (SMB or NFS). LevelKeeper only ever writes/reads inside this path -
-      # it never mounts or unmounts anything itself.
+      # NAS share, already mounted on the host (LevelKeeper never mounts)
       - ${NAS_ARCHIVE_PATH:?set NAS_ARCHIVE_PATH to the host mount of your NAS share}:/archive
-    # No internal scheduler? Drive it from host cron instead:
-    #   docker compose run --rm levelkeeper --once
-    # and leave RUN_INTERVAL empty in .env so the container just runs once
-    # and exits when started normally too.
+    # Host cron instead: `docker compose run --rm levelkeeper --once`
+    # (RUN_INTERVAL empty in .env)
