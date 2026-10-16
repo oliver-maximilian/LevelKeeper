@@ -126,3 +126,24 @@ report_recipients = ["me@example.com"]
     cfg = load_config(config_file)
     assert cfg.imap_host == "imap.strato.de"
     assert cfg.quota_bytes == 2 * 1024**3
+
+
+def test_heartbeat_url_must_be_http(monkeypatch):
+    import pytest
+
+    from levelkeeper.config import Config, ConfigError
+
+    cfg = Config(
+        imap_host="h",
+        imap_user="u",
+        imap_password="p",
+        smtp_host="h",
+        smtp_user="u",
+        smtp_password="p",
+        archive_root="/a",
+        quota="1GB",
+        report_recipients=["a@b.c"],
+        heartbeat_url="file:///etc/passwd",
+    )
+    with pytest.raises(ConfigError):
+        cfg.resolve_and_validate()

@@ -102,6 +102,11 @@ class MessageHeader:
     size: int
     date: datetime
     message_id: str
+    uidvalidity: str = ""
+
+
+class UidValidityChanged(ImapError):
+    """The folder's UIDVALIDITY differs from the one the UIDs were collected under."""
 
 
 class ImapClient:
@@ -112,6 +117,8 @@ class ImapClient:
         self.password = password
         self._imap: imaplib.IMAP4_SSL | None = None
         self._selected: tuple[str, bool] | None = None
+        self._uidvalidity: str = ""
+        self._uidplus = False
 
     def connect(self) -> None:
         self._imap = imaplib.IMAP4_SSL(self.host, self.port)
@@ -119,6 +126,9 @@ class ImapClient:
         if typ != "OK":
             raise ImapError(f"IMAP login failed: {data!r}")
         self._selected = None
+        typ, data = self._imap.capability()
+        caps = b" ".join(d for d in (data or []) if isinstance(d, bytes)).upper().split()
+        self._uidplus = typ == "OK" and b"UIDPLUS" in caps
 
     def close(self) -> None:
         if self._imap is None:
@@ -142,16 +152,28 @@ class ImapClient:
     def __exit__(self, *exc_info) -> None:
         self.close()
 
-    def _select_folder(self, folder: FolderInfo, readonly: bool) -> None:
+    def _select_folder(
+        self, folder: FolderInfo, readonly: bool, expect_uidvalidity: str | None = None
+    ) -> None:
+        """Select a folder; UIDs are only meaningful under the UIDVALIDITY they were read with."""
         assert self._imap is not None
         want = (folder.raw_name, readonly)
-        if self._selected == want:
-            return
-        quoted = _quote_mailbox(folder.raw_name)
-        typ, data = self._imap.select(quoted, readonly=readonly)
-        if typ != "OK":
-            raise ImapError(f"SELECT {folder.display_name!r} failed: {data!r}")
-        self._selected = want
+        if self._selected != want:
+            quoted = _quote_mailbox(folder.raw_name)
+            typ, data = self._imap.select(quoted, readonly=readonly)
+            if typ != "OK":
+                raise ImapError(f"SELECT {folder.display_name!r} failed: {data!r}")
+            self._selected = want
+            _, validity = self._imap.response("UIDVALIDITY")
+            raw = validity[0] if validity else None
+            if not raw:
+                raise ImapError(f"no UIDVALIDITY reported for {folder.display_name!r}")
+            self._uidvalidity = raw.decode() if isinstance(raw, bytes) else str(raw)
+        if expect_uidvalidity is not None and expect_uidvalidity != self._uidvalidity:
+            raise UidValidityChanged(
+                f"UIDVALIDITY of {folder.display_name!r} changed "
+                f"({expect_uidvalidity} -> {self._uidvalidity}), UIDs are no longer valid"
+            )
 
     def list_folders(self) -> list[FolderInfo]:
         assert self._imap is not None
@@ -190,6 +212,7 @@ class ImapClient:
         if not uids:
             return []
         uids = [u.decode() for u in uids]
+        validity = self._uidvalidity
 
         headers: list[MessageHeader] = []
         for batch in _chunk(uids, _FETCH_BATCH_SIZE):
@@ -204,10 +227,12 @@ class ImapClient:
                 if not isinstance(item, tuple):
                     continue
                 info, literal = item
-                headers.append(self._parse_header_item(folder, info, literal))
+                headers.append(self._parse_header_item(folder, info, literal, validity))
         return headers
 
-    def _parse_header_item(self, folder: FolderInfo, info: bytes, literal: bytes) -> MessageHeader:
+    def _parse_header_item(
+        self, folder: FolderInfo, info: bytes, literal: bytes, uidvalidity: str = ""
+    ) -> MessageHeader:
         uid_match = _UID_RE.search(info)
         size_match = _SIZE_RE.search(info)
         internaldate_match = _INTERNALDATE_RE.search(info)
@@ -233,11 +258,20 @@ class ImapClient:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=UTC)
 
-        return MessageHeader(folder=folder, uid=uid, size=size, date=dt, message_id=message_id)
+        return MessageHeader(
+            folder=folder,
+            uid=uid,
+            size=size,
+            date=dt,
+            message_id=message_id,
+            uidvalidity=uidvalidity,
+        )
 
-    def fetch_full_message(self, folder: FolderInfo, uid: str) -> bytes:
+    def fetch_full_message(
+        self, folder: FolderInfo, uid: str, uidvalidity: str | None = None
+    ) -> bytes:
         assert self._imap is not None
-        self._select_folder(folder, readonly=True)
+        self._select_folder(folder, readonly=True, expect_uidvalidity=uidvalidity)
         typ, data = self._imap.uid("fetch", uid, "(RFC822)")
         if typ != "OK" or not data or data[0] is None:
             raise ImapError(
@@ -248,12 +282,22 @@ class ImapClient:
                 return item[1]
         raise ImapError(f"no message body returned for uid={uid} in {folder.display_name!r}")
 
-    def delete_message(self, folder: FolderInfo, uid: str) -> None:
+    def delete_message(self, folder: FolderInfo, uid: str, uidvalidity: str | None = None) -> None:
+        """Delete exactly one message by UID.
+
+        Uses UID EXPUNGE (UIDPLUS) so other messages the user merely flagged
+        \\Deleted are never purged as a side effect. Without UIDPLUS there is no
+        safe way to do that, so we refuse instead of falling back to EXPUNGE.
+        """
         assert self._imap is not None
-        self._select_folder(folder, readonly=False)
+        if not self._uidplus:
+            raise ImapError("server does not advertise UIDPLUS, refusing unsafe EXPUNGE")
+        self._select_folder(folder, readonly=False, expect_uidvalidity=uidvalidity)
         typ, data = self._imap.uid("store", uid, "+FLAGS", "(\\Deleted)")
         if typ != "OK":
             raise ImapError(f"STORE +FLAGS \\Deleted failed for uid={uid}: {data!r}")
-        typ, data = self._imap.expunge()
+        typ, data = self._imap.uid("expunge", uid)
         if typ != "OK":
-            raise ImapError(f"EXPUNGE failed in {folder.display_name!r}: {data!r}")
+            raise ImapError(
+                f"UID EXPUNGE failed for uid={uid} in {folder.display_name!r}: {data!r}"
+            )

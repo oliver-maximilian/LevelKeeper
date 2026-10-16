@@ -13,6 +13,16 @@ Zugangsdaten wie das überwachte Postfach.
   Zielwert. Schlägt der Mailversand selbst fehl (z. B. SMTP nicht
   erreichbar), wird das nur geloggt - der Lauf bricht deswegen nicht
   zusätzlich ab.
+- **Entprellung**: Dieselbe Fehler-Mail (gleicher Betreff und Grund)
+  geht höchstens einmal pro 24 Stunden raus. Der Zeitpunkt liegt in
+  der State-Datei und überlebt Neustarts. Der Fehler zählt trotzdem
+  für den Monatsbericht.
+- **Heartbeat** (optional, `heartbeat_url` bzw.
+  `LEVELKEEPER_HEARTBEAT_URL`): Nach jedem erfolgreichen Lauf wird die
+  URL per GET aufgerufen, z. B. ein Uptime-Kuma-Push-Monitor. Bei
+  abgebrochenen oder übersprungenen Läufen bleibt der Ping aus. So
+  fällt auch ein hängender oder gestoppter Container auf. Ein
+  fehlschlagender Ping wird nur geloggt.
 
 ## Betriebssicherheit
 
@@ -31,3 +41,11 @@ Zugangsdaten wie das überwachte Postfach.
 - **Große Mails**: Nachrichten über `max_message_size` werden
   einzeln mit einer eigenen Log-Zeile markiert, blockieren den Lauf
   aber nicht.
+- **UIDVALIDITY**: Der Scan merkt sich je Ordner die UIDVALIDITY.
+  Vor Abruf und Löschen wird sie erneut geprüft. Hat der Server den
+  Ordner neu aufgebaut, bricht der Lauf mit Fehler-Mail ab, statt
+  per veralteter UID eine falsche Mail zu löschen.
+- **Gezieltes Löschen**: Gelöscht wird per `UID EXPUNGE` (Erweiterung
+  UIDPLUS). Nur die archivierte Mail verschwindet, andere im Mail-Client
+  als gelöscht markierte Mails bleiben unberührt. Meldet der Server
+  UIDPLUS nicht, löscht LevelKeeper nichts und meldet einen Fehler.

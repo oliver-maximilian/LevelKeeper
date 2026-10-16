@@ -40,3 +40,5 @@ dry_run = true
 run_interval = "1h"
 state_path = "/data/state.json"
 lock_file = "/data/levelkeeper.lock"
+# Optional: push URL (e.g. Uptime Kuma push monitor), called after every successful run.
+# heartbeat_url = "https://kuma.example.com/api/push/TOKEN?status=up&msg=OK"

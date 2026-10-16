@@ -11,7 +11,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -93,3 +93,29 @@ class StateStore:
     def mark_reported(self, month_key: str) -> None:
         self._data["reported_through"] = month_key
         self._save()
+
+    def error_mail_due(self, key: str, now: datetime, cooldown: timedelta) -> bool:
+        """True unless a mail for this error key went out within `cooldown`."""
+        raw = self._data.get("error_mails", {}).get(key)
+        if raw is None:
+            return True
+        try:
+            last = datetime.fromisoformat(raw)
+        except ValueError:
+            return True
+        return now - last >= cooldown
+
+    def mark_error_mailed(self, key: str, now: datetime, cooldown: timedelta) -> None:
+        sent = self._data.setdefault("error_mails", {})
+        sent[key] = now.isoformat()
+        stale = [k for k, v in sent.items() if not self._within(v, now, cooldown)]
+        for k in stale:
+            del sent[k]
+        self._save()
+
+    @staticmethod
+    def _within(raw: str, now: datetime, cooldown: timedelta) -> bool:
+        try:
+            return now - datetime.fromisoformat(raw) < cooldown
+        except ValueError:
+            return False

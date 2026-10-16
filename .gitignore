@@ -12,6 +12,7 @@ __pycache__/
 *.egg-info/
 .venv/
 .ruff_cache/
+.DS_Store
 
 # Changelog lives only in GitHub Releases, not as a repo file - see justfile.
 CHANGELOG.md

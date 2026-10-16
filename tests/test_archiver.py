@@ -40,14 +40,16 @@ class FakeImapClient:
             for m in self._data[folder]
         ]
 
-    def fetch_full_message(self, folder: FolderInfo, uid: str) -> bytes:
+    def fetch_full_message(
+        self, folder: FolderInfo, uid: str, uidvalidity: str | None = None
+    ) -> bytes:
         self.fetch_calls.append((folder.display_name, uid))
         for m in self._data[folder]:
             if m["uid"] == uid:
                 return m["body"]
         raise ImapError(f"uid {uid} not found")
 
-    def delete_message(self, folder: FolderInfo, uid: str) -> None:
+    def delete_message(self, folder: FolderInfo, uid: str, uidvalidity: str | None = None) -> None:
         self.deleted.append((folder.display_name, uid))
 
 
@@ -56,8 +58,9 @@ class FakeNotifier:
         self.errors: list[tuple[str, str]] = []
         self.reports: list[tuple[str, str]] = []
 
-    def send_error(self, subject: str, body: str) -> None:
+    def send_error(self, subject: str, body: str) -> bool:
         self.errors.append((subject, body))
+        return True
 
     def send_report(self, subject: str, body: str) -> None:
         self.reports.append((subject, body))
@@ -265,3 +268,41 @@ def test_idempotent_restart_skips_rewrite_but_still_deletes(tmp_path):
     assert client.deleted == [("INBOX", "1"), ("INBOX", "2"), ("INBOX", "3")]
     assert result.archived_count == 3
     assert notifier.errors == []
+
+
+def test_repeated_identical_error_mail_is_suppressed(tmp_path):
+    cfg = _cfg(tmp_path, quota="1000", trigger="600", target="400")
+    (tmp_path / "archive" / ".marker").unlink()
+    state = StateStore(cfg.state_path)
+    notifier = FakeNotifier()
+    archiver = Archiver(
+        cfg, notifier, state, imap_client_factory=lambda: FakeImapClient({INBOX: []})
+    )
+
+    archiver.run()
+    archiver.run()
+    assert len(notifier.errors) == 1
+
+    # survives a restart because the timestamp is persisted
+    archiver = Archiver(
+        cfg,
+        notifier,
+        StateStore(cfg.state_path),
+        imap_client_factory=lambda: FakeImapClient({INBOX: []}),
+    )
+    archiver.run()
+    assert len(notifier.errors) == 1
+
+
+def test_heartbeat_sent_only_after_successful_run(tmp_path, monkeypatch):
+    pings: list[str] = []
+    monkeypatch.setattr("levelkeeper.archiver.send_heartbeat", lambda url: pings.append(url))
+    cfg = _cfg(tmp_path, quota="1000", trigger="600", target="400")
+    cfg.heartbeat_url = "https://kuma.example/api/push/x"
+
+    _run(cfg, FakeImapClient({INBOX: [_msg("1", 300, 0)]}))
+    assert pings == ["https://kuma.example/api/push/x"]
+
+    (tmp_path / "archive" / ".marker").unlink()
+    _run(cfg, FakeImapClient({INBOX: []}))
+    assert len(pings) == 1

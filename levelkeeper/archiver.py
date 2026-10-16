@@ -9,12 +9,14 @@ remaining) messages untouched on the server.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from levelkeeper.config import Config
+from levelkeeper.heartbeat import send_heartbeat
 from levelkeeper.imap_client import FolderInfo, ImapClient, ImapError, MessageHeader
 from levelkeeper.lockfile import LockFile, LockHeldError
 from levelkeeper.mount_check import check_mount
@@ -29,6 +31,9 @@ from levelkeeper.storage import (
 )
 
 logger = logging.getLogger(__name__)
+
+# An identical error mail is sent at most once per this period.
+ERROR_MAIL_COOLDOWN = timedelta(hours=24)
 
 
 class AbortRun(RuntimeError):
@@ -125,6 +130,8 @@ class Archiver:
                     self._record_and_maybe_report(result, today)
                 except Exception:  # noqa: BLE001 - must never crash the scheduler loop
                     logger.exception("failed to persist run state or send monthly report")
+                if not result.aborted and self.config.heartbeat_url:
+                    send_heartbeat(self.config.heartbeat_url)
 
     def _run_locked(self, result: RunResult) -> None:
         client = self._imap_client_factory()
@@ -211,7 +218,7 @@ class Archiver:
             )
             logger.warning(msg)
             self._pending_errors.append(f"Zielwert nicht erreichbar: {msg}")
-            self.notifier.send_error("Zielwert nicht erreichbar", error_mail_body(msg))
+            self._send_error("Zielwert nicht erreichbar", msg, error_mail_body(msg))
 
     def _process_message(self, client: ImapClient, header: MessageHeader, result: RunResult) -> int:
         if self.config.dry_run:
@@ -227,7 +234,7 @@ class Archiver:
             return header.size
 
         try:
-            raw = client.fetch_full_message(header.folder, header.uid)
+            raw = client.fetch_full_message(header.folder, header.uid, header.uidvalidity)
         except ImapError as exc:
             self._handle_critical(
                 result,
@@ -283,7 +290,7 @@ class Archiver:
             )
 
         try:
-            client.delete_message(header.folder, header.uid)
+            client.delete_message(header.folder, header.uid, header.uidvalidity)
         except ImapError as exc:
             self._handle_critical(
                 result, "Loeschen auf dem Server fehlgeschlagen", str(exc), context
@@ -301,7 +308,23 @@ class Archiver:
         result.aborted = True
         result.abort_reason = reason
         self._pending_errors.append(f"{subject}: {reason}")
-        self.notifier.send_error(subject, error_mail_body(reason, context))
+        self._send_error(subject, reason, error_mail_body(reason, context))
+
+    def _send_error(self, subject: str, reason: str, body: str) -> None:
+        """Send an error mail unless the same error was already mailed within the cooldown."""
+        key = hashlib.sha256(f"{subject}\n{reason}".encode()).hexdigest()[:16]
+        now = datetime.now(UTC)
+        try:
+            if not self.state.error_mail_due(key, now, ERROR_MAIL_COOLDOWN):
+                logger.info("suppressing repeated error mail %r (cooldown)", subject)
+                return
+        except Exception:  # noqa: BLE001 - dedup must never block an alert
+            logger.exception("error mail dedup check failed, sending anyway")
+        if self.notifier.send_error(subject, body):
+            try:
+                self.state.mark_error_mailed(key, now, ERROR_MAIL_COOLDOWN)
+            except Exception:  # noqa: BLE001
+                logger.exception("could not persist error mail timestamp")
 
     def _record_and_maybe_report(self, result: RunResult, today: date) -> None:
         errors = list(self._pending_errors)

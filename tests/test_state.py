@@ -42,3 +42,17 @@ def test_mark_reported_prevents_resend(tmp_path):
     store.record_run(date(2026, 6, 15), 1, 100, [])
     store.mark_reported("2026-06")
     assert store.pending_monthly_report(date(2026, 7, 1)) is None
+
+
+def test_error_mail_cooldown(tmp_path):
+    from datetime import UTC, datetime, timedelta
+
+    store = StateStore(tmp_path / "state.json")
+    now = datetime(2026, 6, 1, 12, tzinfo=UTC)
+    cooldown = timedelta(hours=24)
+    assert store.error_mail_due("k", now, cooldown)
+    store.mark_error_mailed("k", now, cooldown)
+    reloaded = StateStore(tmp_path / "state.json")
+    assert not reloaded.error_mail_due("k", now + timedelta(hours=23), cooldown)
+    assert reloaded.error_mail_due("k", now + timedelta(hours=24), cooldown)
+    assert reloaded.error_mail_due("other", now, cooldown)

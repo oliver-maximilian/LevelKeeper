@@ -105,6 +105,7 @@ class Config:
     run_interval: str = ""  # empty => run once and exit
     state_path: str = "/data/state.json"
     lock_file: str = "/data/levelkeeper.lock"
+    heartbeat_url: str = ""  # optional push URL (e.g. Uptime Kuma), pinged after each OK run
 
     # Resolved at validation time (bytes)
     quota_bytes: int = 0
@@ -123,6 +124,9 @@ class Config:
             raise ConfigError("quota is required")
         if not self.report_recipients and not self.error_recipients:
             raise ConfigError("at least one of report_recipients/error_recipients is required")
+
+        if self.heartbeat_url and not self.heartbeat_url.startswith(("http://", "https://")):
+            raise ConfigError("heartbeat_url must start with http:// or https://")
 
         self.quota_bytes = parse_size(self.quota)
         self.trigger_bytes = parse_threshold(self.trigger, self.quota_bytes)
@@ -209,6 +213,8 @@ def _apply_env_overrides(cfg: Config) -> None:
         cfg.state_path = v
     if v := get("LOCK_FILE"):
         cfg.lock_file = v
+    if v := get("HEARTBEAT_URL"):
+        cfg.heartbeat_url = v
 
 
 def _apply_toml(cfg: Config, data: dict) -> None:
@@ -247,6 +253,7 @@ def _apply_toml(cfg: Config, data: dict) -> None:
     cfg.run_interval = str(runtime.get("run_interval", cfg.run_interval))
     cfg.state_path = runtime.get("state_path", cfg.state_path)
     cfg.lock_file = runtime.get("lock_file", cfg.lock_file)
+    cfg.heartbeat_url = runtime.get("heartbeat_url", cfg.heartbeat_url)
 
 
 def load_config(path: str | Path | None) -> Config:
