@@ -153,7 +153,7 @@ def test_excluded_folder_counts_toward_fill_but_is_never_touched(tmp_path):
     assert result.fill_before == 800
     assert client.deleted == [("INBOX", "1")]
     assert result.archived_count == 1
-    # Target of 400 can't be reached because the 500-byte Trash message is excluded.
+    # target 400 unreachable: the 500-byte Trash mail is excluded
     assert result.fill_after == 500
     assert any("Target unreachable" in subject for subject, _ in notifier.errors)
 
@@ -212,10 +212,8 @@ def test_lock_permission_error_sends_error_mail_and_does_not_raise(tmp_path):
 
 
 def test_entire_data_dir_unwritable_still_completes_without_raising(tmp_path):
-    # Reproduces a host bind-mount owned by the wrong user: both the lockfile
-    # and the state file live under the same unwritable /data directory. The
-    # already-sent error mail (for the lockfile) must not be undone by a
-    # crash while trying to persist run state afterwards.
+    # bind-mount owned by the wrong user: lockfile and state both unwritable,
+    # the error mail must still go out without a crash
     data = {INBOX: [_msg("1", 300, 0)]}
     client = FakeImapClient(data)
     cfg = _cfg(tmp_path, quota="1000", trigger="600", target="400")
@@ -256,8 +254,7 @@ def test_idempotent_restart_skips_rewrite_but_still_deletes(tmp_path):
     client = FakeImapClient(data)
     cfg = _cfg(tmp_path, quota="1000", trigger="600", target="200")
 
-    # Simulate a prior run that wrote msg 1 to the archive but crashed before
-    # deleting it from the server.
+    # earlier run wrote msg 1 but crashed before the delete
     path = build_archive_path(cfg.archive_root, "INBOX", BASE_DATE, "<1@test>", b"body-1")
     write_eml_atomic(path, b"body-1")
     mtime_before = path.stat().st_mtime_ns
@@ -283,7 +280,7 @@ def test_repeated_identical_error_mail_is_suppressed(tmp_path):
     archiver.run()
     assert len(notifier.errors) == 1
 
-    # survives a restart because the timestamp is persisted
+    # survives a restart
     archiver = Archiver(
         cfg,
         notifier,

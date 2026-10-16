@@ -1,4 +1,4 @@
-"""Plain-text bodies for the monthly report and error notifications."""
+"""Mail bodies."""
 
 from __future__ import annotations
 

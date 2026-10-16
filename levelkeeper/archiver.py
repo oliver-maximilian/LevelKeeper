@@ -1,8 +1,7 @@
-"""Core run loop: fill-level check, oldest-first archiving, verified deletes.
+"""Run loop: fill check, oldest-first archiving, verified deletes.
 
-Invariant: a message is deleted from the server only after its .eml is written
-and verified (size + SHA-256). Any failure aborts the run and leaves the
-affected and all remaining messages on the server.
+Invariant: delete on the server only after the .eml is written and verified.
+Any failure aborts the run.
 """
 
 from __future__ import annotations
@@ -35,7 +34,7 @@ ERROR_MAIL_COOLDOWN = timedelta(hours=24)
 
 
 class AbortRun(RuntimeError):
-    """Run aborted, already logged and notified."""
+    """Run aborted (already logged and notified)."""
 
 
 @dataclass
@@ -113,7 +112,7 @@ class Archiver:
 
             self._run_locked(result)
             return result
-        except Exception as exc:  # noqa: BLE001 - always send an error mail
+        except Exception as exc:  # noqa: BLE001
             logger.exception("unexpected error during run")
             self._handle_critical(result, "Unexpected error", f"{type(exc).__name__}: {exc}")
             return result
@@ -126,7 +125,7 @@ class Archiver:
             if not result.skipped:
                 try:
                     self._record_and_maybe_report(result, today)
-                except Exception:  # noqa: BLE001 - never crash the scheduler loop
+                except Exception:  # noqa: BLE001
                     logger.exception("failed to persist run state or send monthly report")
                 if not result.aborted and self.config.heartbeat_url:
                     send_heartbeat(self.config.heartbeat_url)
@@ -305,14 +304,14 @@ class Archiver:
         self._send_error(subject, reason, error_mail_body(reason, context))
 
     def _send_error(self, subject: str, reason: str, body: str) -> None:
-        """Send unless the same error was mailed within the cooldown."""
+        """Skip if the same error was mailed within the cooldown."""
         key = hashlib.sha256(f"{subject}\n{reason}".encode()).hexdigest()[:16]
         now = datetime.now(UTC)
         try:
             if not self.state.error_mail_due(key, now, ERROR_MAIL_COOLDOWN):
                 logger.info("suppressing repeated error mail %r (cooldown)", subject)
                 return
-        except Exception:  # noqa: BLE001 - dedup never blocks an alert
+        except Exception:  # noqa: BLE001
             logger.exception("error mail dedup check failed, sending anyway")
         if self.notifier.send_error(subject, body):
             try:

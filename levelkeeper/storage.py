@@ -1,9 +1,9 @@
-"""Archive layout, atomic .eml writing, write verification.
+"""Archive layout, atomic writes, verification.
 
-Layout: <archive_root>/<year>/<imap-folder-path>/YYYY-MM-DD_HHMMSS_<hash>.eml
+<archive_root>/<year>/<imap-folder-path>/YYYY-MM-DD_HHMMSS_<hash>.eml
 
-The filename is deterministic (Message-ID, else body), so a message
-reprocessed after a crash lands on the same path (see find_existing_archive).
+The name is deterministic (Message-ID, else body), so a retry after a crash
+hits the same path.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ def sha256_hex(data: bytes) -> str:
 
 
 def message_hash(message_id: str, raw_bytes: bytes) -> str:
-    """Short stable id from Message-ID (else body)."""
+    """Stable id from Message-ID, else body."""
     basis = message_id.strip().encode("utf-8") if message_id.strip() else raw_bytes
     return hashlib.sha256(basis).hexdigest()[:16]
 
@@ -62,11 +62,7 @@ class VerifyResult:
 
 
 def find_existing_archive(path: Path, raw_bytes: bytes) -> VerifyResult | None:
-    """None if `path` doesn't exist.
-
-    ok=True: same message already archived, skip the write.
-    ok=False: different content at that path, caller must abort without deleting.
-    """
+    """None: no file. ok=True: already archived. ok=False: conflict, abort."""
     if not path.exists():
         return None
     existing = path.read_bytes()

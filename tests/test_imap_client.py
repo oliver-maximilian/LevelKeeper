@@ -42,7 +42,7 @@ def test_folder_display_path_normalizes_delimiter():
 
 
 class FakeImaplib:
-    """Minimal imaplib stand-in recording commands; validity can change between SELECTs."""
+    """imaplib stand-in, records commands."""
 
     def __init__(self, validities, caps=b"IMAP4REV1 UIDPLUS"):
         self.validities = list(validities)

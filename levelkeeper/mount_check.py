@@ -1,8 +1,7 @@
 """NAS mount check via marker file.
 
-A bind mount looks mounted in the container even if the host failed to mount
-the share (Docker binds the empty local dir), so os.path.ismount() is not
-enough. The marker exists only on the real share (created once, see setup.md).
+ismount() is useless here: Docker binds the empty local dir if the host mount
+failed. The marker exists only on the real share (see setup.md).
 """
 
 from __future__ import annotations

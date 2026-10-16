@@ -1,4 +1,4 @@
-"""PID-based lockfile preventing overlapping runs."""
+"""PID lockfile against overlapping runs."""
 
 from __future__ import annotations
 

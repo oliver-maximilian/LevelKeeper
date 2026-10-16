@@ -1,4 +1,4 @@
-"""Heartbeat push after a successful run (Uptime Kuma)."""
+"""Heartbeat ping (Uptime Kuma)."""
 
 from __future__ import annotations
 

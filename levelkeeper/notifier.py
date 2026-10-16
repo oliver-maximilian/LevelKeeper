@@ -1,4 +1,4 @@
-"""SMTP notifications (error mails and the monthly report)."""
+"""SMTP mails."""
 
 from __future__ import annotations
 

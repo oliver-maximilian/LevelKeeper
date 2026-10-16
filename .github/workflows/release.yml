@@ -9,10 +9,8 @@ permissions:
   contents: write
   packages: write
 
-# Changelog lives only in GitHub Releases (this workflow's output), not as a
-# committed CHANGELOG.md - `git-cliff` can always regenerate it on demand
-# from commit history, and not touching `main` from CI avoids diverging
-# local checkouts that need a pull+reset after every release.
+# Changelog lives only in GitHub Releases, never committed. CI doesn't touch
+# main, so local checkouts don't diverge.
 
 jobs:
   docker:

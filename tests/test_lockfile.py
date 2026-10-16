@@ -27,7 +27,7 @@ def test_double_acquire_raises(tmp_path):
 
 def test_stale_lock_is_cleared(tmp_path):
     path = tmp_path / "lk.lock"
-    path.write_text("999999")  # pid very unlikely to be running
+    path.write_text("999999")  # unused pid
     lock = LockFile(path)
     lock.acquire()
     assert path.read_text().strip() == str(os.getpid())

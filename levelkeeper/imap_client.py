@@ -1,8 +1,4 @@
-"""Thin IMAP wrapper: folders, header scan, fetch, delete.
-
-All message identity goes through UIDs, so an EXPUNGE mid-run can't shift us
-onto the wrong message.
-"""
+"""IMAP wrapper. UIDs only, so an EXPUNGE mid-run can't hit the wrong message."""
 
 from __future__ import annotations
 
@@ -26,7 +22,7 @@ _FETCH_BATCH_SIZE = 300
 
 
 class ImapError(RuntimeError):
-    """Non-OK IMAP response."""
+    """Non-OK response."""
 
 
 def decode_modified_utf7(text: str) -> str:
@@ -105,7 +101,7 @@ class MessageHeader:
 
 
 class UidValidityChanged(ImapError):
-    """UIDVALIDITY changed since the UIDs were collected."""
+    """UIDVALIDITY changed, UIDs are stale."""
 
 
 class ImapClient:
@@ -154,7 +150,7 @@ class ImapClient:
     def _select_folder(
         self, folder: FolderInfo, readonly: bool, expect_uidvalidity: str | None = None
     ) -> None:
-        """Select a folder and check UIDVALIDITY against the one the UIDs came from."""
+        """Select and check UIDVALIDITY against the scan."""
         assert self._imap is not None
         want = (folder.raw_name, readonly)
         if self._selected != want:
@@ -198,7 +194,7 @@ class ImapClient:
         return folders
 
     def message_headers(self, folder: FolderInfo) -> list[MessageHeader]:
-        """All messages of a folder (size, date, message-id). BODY.PEEK keeps \\Seen untouched."""
+        """Size, date, message-id of all messages. BODY.PEEK keeps \\Seen."""
         assert self._imap is not None
         self._select_folder(folder, readonly=True)
         typ, data = self._imap.uid("search", None, "ALL")
@@ -279,11 +275,7 @@ class ImapClient:
         raise ImapError(f"no message body returned for uid={uid} in {folder.display_name!r}")
 
     def delete_message(self, folder: FolderInfo, uid: str, uidvalidity: str | None = None) -> None:
-        """Delete one message via UID EXPUNGE (UIDPLUS).
-
-        Plain EXPUNGE would also purge messages the user flagged \\Deleted.
-        Without UIDPLUS we refuse instead of falling back.
-        """
+        """UID EXPUNGE (UIDPLUS). Plain EXPUNGE would purge user-flagged \\Deleted mails too."""
         assert self._imap is not None
         if not self._uidplus:
             raise ImapError("server does not advertise UIDPLUS, refusing unsafe EXPUNGE")

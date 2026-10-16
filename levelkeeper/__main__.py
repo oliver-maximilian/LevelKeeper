@@ -1,4 +1,4 @@
-"""CLI entrypoint: long-running with run_interval, one-shot with --once or host cron."""
+"""CLI entrypoint."""
 
 from __future__ import annotations
 

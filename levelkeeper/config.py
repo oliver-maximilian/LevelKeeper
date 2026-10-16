@@ -1,7 +1,4 @@
-"""Config loading (optional TOML, ENV on top), size/threshold parsing, validation.
-
-Sizes are binary (1 GB == 1024**3 bytes).
-"""
+"""Config: optional TOML, ENV on top. Sizes are binary (1 GB == 1024**3)."""
 
 from __future__ import annotations
 
@@ -24,7 +21,7 @@ _SIZE_UNITS = {
 
 
 class ConfigError(ValueError):
-    """Raised for invalid or missing configuration."""
+    """Invalid or missing config."""
 
 
 def parse_size(value: str | int | float) -> int:
@@ -47,7 +44,7 @@ def parse_size(value: str | int | float) -> int:
 
 
 def parse_threshold(value: str | int | float, quota_bytes: int) -> int:
-    """Absolute size or percentage of quota_bytes to bytes."""
+    """Absolute size or percent of quota_bytes, as bytes."""
     text = str(value).strip()
     if text.endswith("%"):
         try:
@@ -81,7 +78,7 @@ class Config:
     smtp_password: str = ""
     smtp_from_addr: str = ""
 
-    # Thresholds (raw strings, resolved to bytes in validation)
+    # Thresholds (raw, resolved to bytes in validation)
     quota: str = ""
     trigger: str = ""
     target: str = ""
@@ -103,9 +100,9 @@ class Config:
     run_interval: str = ""  # empty: run once and exit
     state_path: str = "/data/state.json"
     lock_file: str = "/data/levelkeeper.lock"
-    heartbeat_url: str = ""  # push URL (Uptime Kuma), pinged after each OK run
+    heartbeat_url: str = ""  # pinged after each OK run
 
-    # Resolved in validation (bytes)
+    # Resolved (bytes)
     quota_bytes: int = 0
     trigger_bytes: int = 0
     target_bytes: int = 0
@@ -255,7 +252,7 @@ def _apply_toml(cfg: Config, data: dict) -> None:
 
 
 def load_config(path: str | Path | None) -> Config:
-    """Optional TOML, then ENV overrides."""
+    """TOML, then ENV overrides."""
     cfg = Config()
     if path is not None and Path(path).is_file():
         with open(path, "rb") as f:
