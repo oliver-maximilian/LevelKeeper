@@ -31,16 +31,25 @@ format:
 lint:
     .venv/bin/ruff check .
 
-# tag the next version (git cliff)
+# set the next version in pyproject.toml, commit it and tag it (`just bump-version push` also pushes)
 [no-cd]
 bump-version push="":
     #!/usr/bin/env bash
-    export VERSION="$( git cliff --bumped-version )"
+    set -euo pipefail
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        echo "working tree not clean, commit or stash first" >&2
+        exit 1
+    fi
+    VERSION="$(git cliff --bumped-version 2>/dev/null)"
+    sed -i.bak -E "s/^version = \".*\"/version = \"${VERSION#v}\"/" pyproject.toml
+    rm pyproject.toml.bak
+    git add pyproject.toml
+    git commit -m "chore(release): ${VERSION#v}"
     git tag -m "$VERSION" "$VERSION"
-    git log HEAD~1..HEAD
+    git log -1 --oneline
 
     if [[ "{{push}}" = "push" ]]; then
-        git push origin $VERSION
+        git push origin main "$VERSION"
     fi
 
 # print the upcoming changelog (stdout only)

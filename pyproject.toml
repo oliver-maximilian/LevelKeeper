@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "levelkeeper"
-version = "0.1.0"
+version = "0.3.0"
 description = "IMAP mailbox fill-level manager: archives the oldest mail to a NAS and deletes it from the server once a configurable threshold is exceeded."
 requires-python = ">=3.11"
 dependencies = []
