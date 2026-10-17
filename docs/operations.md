@@ -22,7 +22,7 @@ Sent via SMTP over `smtp.strato.de` (SSL/TLS) with the same credentials as the m
 
 ## Dependency updates
 
-Renovate runs hourly as a GitHub Action (`.github/workflows/renovate.yml`, config in `renovate.json`). It opens PRs on Monday mornings and merges non-major updates of the CI actions and the Dovecot test image once Test and Lint are green. Everything else waits for review.
+Renovate runs hourly as a GitHub Action (`.github/workflows/renovate.yml`, config in `renovate.json`). It opens PRs as soon as it finds an update and merges non-major updates of the CI actions and the Dovecot test image once Test and Lint are green. Everything else waits for review.
 
 Setup, once:
 
